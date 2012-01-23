@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  xmlns:buttons="views.buttons.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:HorizontalLayout paddingRight="2">
+			
+		</s:HorizontalLayout>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.events.ImageEvent;
+			import jp.wordsmart.model.KeywordAdminModel;
+			
+			import views.tasks.addTagToSlide;
+			[Bindable]public var wordSmartImage:WSImage;
+			[Bindable]public var showEditDetails:Boolean;
+			[Bindable]public var showShowKeywordDetails:Boolean;
+			[Bindable]public var showRemove:Boolean;
+			[Bindable]public var showEditSlide:Boolean;
+			[Bindable]public var showSaveSlide:Boolean;
+			[Bindable]public var showAddToKeyword:Boolean;
+			
+			public var removeFunc:Function;//no params
+			public var saveFunc:Function;//no params
+			
+			private function addToKeyword():void
+			{
+				dispatchEvent(
+				new ImageEvent(ImageEvent.EVENT_ADD_IMAGE_TO_KEYWORD, 
+				wordSmartImage, true, 
+				function():void{trace("Add to Keyword complete"); btn_addToKeyword.visible = false;})
+			)};
+			
+			private function showImageDetails():void
+			{dispatchEvent(new ImageEvent(ImageEvent.EVENT_SHOW_IMAGE_DETAILS,wordSmartImage,true));}
+			private function goToKeywords():void
+			{dispatchEvent(new ImageEvent(ImageEvent.EVENT_SHOW_KEYWORD_DETAILS,wordSmartImage,true));}
+			private function editSlide():void
+			{
+				dispatchEvent(new ImageEvent(ImageEvent.EVENT_EDIT_IMAGE,wordSmartImage,true));
+			}
+			private function removeSlide():void
+			{
+			if(removeFunc != null){trace("Remove slide")}
+			}
+			
+			private function saveSlide():void
+			{
+			if(saveFunc != null){saveFunc()};
+			}
+			
+
+			protected function btn_add_to_combo_clickHandler(event:MouseEvent):void
+			{
+				if(KeywordAdminModel.getInstance().comboAdderViewModel != null)
+				{
+					addTagToSlide(KeywordAdminModel.getInstance().selectedKeyword.keyword_text,wordSmartImage);
+					KeywordAdminModel.getInstance().comboAdderViewModel.image = wordSmartImage;
+				}
+			}
+
+		]]>
+	</fx:Script>
+	<s:HGroup horizontalAlign="right">
+		<buttons:WSIconButton visible="{wordSmartImage != null  &amp;&amp; !isNaN(wordSmartImage.image_ID)  &amp;&amp; KeywordAdminModel.getInstance().comboAdderViewModel!=null}" icon="{IconLib.COMBINE_16}" toolTip="Add Slide to Combo" id="btn_add_to_combo" click="btn_add_to_combo_clickHandler(event)"  width="24" height="24" />
+		<buttons:WSIconButton includeInLayout="{wordSmartImage != null &amp;&amp; showEditDetails}" visible="{wordSmartImage != null  &amp;&amp; showEditDetails}" icon="{IconLib.DETAILS_LIST_16}" toolTip="View Slide Details" id="btn_showDetails" click="showImageDetails()"  width="24" height="24" />
+		<!--<buttons:WSIconButton includeInLayout="{wordSmartImage != null  &amp;&amp; showShowKeywordDetails}" visible="{wordSmartImage != null  &amp;&amp; showShowKeywordDetails}" icon="{IconLib.CLIP_16}" toolTip="View Linked Keywords" id="btn_showKeywordDetails" click="goToKeywords()"  width="24" height="24" />
+		-->
+		<buttons:WSIconButton includeInLayout="{wordSmartImage != null  &amp;&amp; showAddToKeyword &amp;&amp; KeywordAdminModel.getInstance().selectedKeyword != null}" visible="{wordSmartImage != null  &amp;&amp; showAddToKeyword &amp;&amp; KeywordAdminModel.getInstance().selectedKeyword != null}" icon="{IconLib.LINK_16}" toolTip="Link to Keyword" id="btn_addToKeyword" click="addToKeyword()"  width="24" height="24" />
+		<buttons:WSIconButton id="btn_editAsSlide" includeInLayout="{wordSmartImage != null   &amp;&amp; showEditSlide}"  visible="{wordSmartImage != null   &amp;&amp; showEditSlide}" width="24" height="24" icon="{IconLib.DOC_EDIT_16}" click="editSlide()" toolTip="Edit Slide"/>
+		<buttons:WSIconButton id="btn_saveSlide" includeInLayout="{wordSmartImage != null   &amp;&amp; showSaveSlide}"  visible="{wordSmartImage != null   &amp;&amp; showSaveSlide}" width="24" height="24" icon="{IconLib.SAVE_16}" click="saveSlide()" toolTip="Save Slide"/>
+		<mx:VRule height="24"/>
+		<buttons:WSIconButton id="btn_removeSlide" includeInLayout="{wordSmartImage != null   &amp;&amp; showRemove}"  visible="{wordSmartImage != null   &amp;&amp; showRemove}" width="24" height="24" icon="{IconLib.DELETE_16}" click="removeSlide()" toolTip="Delete this Slide"/>
+	</s:HGroup>
+	
+</s:Group>

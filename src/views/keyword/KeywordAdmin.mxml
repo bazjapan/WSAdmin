@@ -1,0 +1,610 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" resize="resize(event)" creationComplete="cc()" width="100%" height="100%" xmlns:keyword="views.keyword.*" xmlns:language="views.language.*" xmlns:buttons="views.buttons.*" xmlns:views="views.*" xmlns:combo="views.combo.*">
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.devahead.utils.PopUpUtils;
+			import com.pbsmediatech.json.utils.extractResultResult;
+			
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.combo.ComboAdderViewModel;
+			import jp.wordsmart.dto.AudioRequest;
+			import jp.wordsmart.dto.TranslationRequest;
+			import jp.wordsmart.dto.WSCombo;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.events.CBEvent;
+			import jp.wordsmart.events.KeywordEvent;
+			import jp.wordsmart.factory.KeywordFactory;
+			import jp.wordsmart.json.controllers.WSKeywordController;
+			import jp.wordsmart.json.utils.WSKeywordResultHelper;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.model.KeywordAdminModel;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ResizeEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import ui.titlewindows.AWindowSkin;
+			import ui.titlewindows.CollapsibleTitleWindow;
+			import ui.titlewindows.SuperTitleWindow;
+			import ui.titlewindows.SuperTitleWindowSkin;
+			
+			import utils.array.containsObjectWithSameParameterValue;
+			import utils.array.merge;
+			import utils.string.truncate;
+			
+			import views.combo.ComboFromKeywordAdder;
+			import views.request.audio.AudioRequestForm;
+			import views.request.audio.AudioRequestGrid;
+			import views.request.translation.TranslationRequestForm;
+			import views.request.translation.TranslationRequestGrid;
+			import views.slide.MySlideRenderer;
+
+			[Bindable]private var keywordModel:KeywordAdminModel = KeywordAdminModel.getInstance();
+			private var keywordController:WSKeywordController = new WSKeywordController(getServiceBaseURL());
+			
+			private function cc():void
+			{
+				toolBar.addEventListener("LOAD_KEYWORDS", onLOAD_KEYWORDS);
+				toolBar.addEventListener("SHOW_TRANSLATION_REQUESTS",onSHOW_TRANSLATION_REQUESTS);
+				
+				
+				//from Audio Adder 
+				systemManager.addEventListener("SHOW_AUDIO_REQUESTS",onSHOW_AUDIO_REQUESTS);
+				
+				
+				//set up toolbar position
+				toolBar.y = 200;
+				toolBar.x = this.width-(toolBar.width+10);
+				
+				//add keyword to list listeners
+				cc_keywordAdderBar.addEventListener("ADD_KEYWORD_TO_LIST", onADD_KEYWORD_TO_LIST);
+				this.addEventListener(KeywordEvent.REMOVE_FROM_LIST,onREMOVE_FROM_LIST);
+				
+				//requests
+				this.addEventListener("OPEN_TRANSLATION_REQUESTER",function(evt:CBEvent):void
+				{
+					//currently can open same one
+					var alreadyOpen:Boolean;
+					var request:TranslationRequest = evt.data['translation_request'];
+					//check if new
+					var newRequest:Boolean;
+					if(isNaN(request.request_ID)){newRequest = true};
+					
+					if(!newRequest)
+					{
+						var openRequests:ArrayCollection = PopUpUtils.getAllPopups();
+						
+						for each (var obj:Object in openRequests)
+						{
+							if(obj is SuperTitleWindow)
+							{
+								if(SuperTitleWindow(obj).title == "Request Translation")
+								{
+									trace("I am a translation request Im i the same one? " +SuperTitleWindow(obj).getElementAt(0))
+									var rf:TranslationRequestForm = SuperTitleWindow(obj).getElementAt(0) as TranslationRequestForm;
+									if(rf.translation_request.request_ID == request.request_ID)
+									{
+										alreadyOpen = true;
+										trace("this is already open");
+										SuperTitleWindow(obj).minimized = false;
+									}
+								}
+							}
+						}
+					}
+					
+					if(alreadyOpen){return};
+					var wrapper:SuperTitleWindow = new SuperTitleWindow;
+					var form:TranslationRequestForm = new TranslationRequestForm;
+					form.translation_request = evt.data['translation_request'];
+					form.source_text = evt.data['source_text'];
+					wrapper.title = "Request Translation";
+					wrapper.addElement(form);
+					wrapper.setStyle("skinClass", SuperTitleWindowSkin);
+					wrapper.narrowest = form.minWidth;
+					wrapper.shortest = form.minHeight;
+					wrapper.width = 400;
+					wrapper.height = 350;
+					PopUpManager.addPopUp(wrapper,parent);
+					wrapper.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+					{
+						trace("closing request take note?")
+						PopUpManager.removePopUp(wrapper);
+						evt.playCallbacks();
+					});
+					form.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+					{
+						trace("closing request take note?")
+						PopUpManager.removePopUp(wrapper);
+						evt.playCallbacks();
+					});
+					
+				});
+				this.addEventListener("OPEN_AUDIO_REQUESTER",function(evt:CBEvent):void
+				{
+					var wrapper:CollapsibleTitleWindow = new CollapsibleTitleWindow;
+					var form:AudioRequestForm = new AudioRequestForm;
+					form.audio_request = evt.data as AudioRequest;
+					wrapper.title = "Request Audio";
+					wrapper.addElement(form);
+					wrapper.setStyle("skinClass", AWindowSkin);
+					PopUpManager.addPopUp(wrapper,parent);
+					wrapper.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+					{
+						PopUpManager.removePopUp(wrapper);
+						evt.playCallbacks();
+					});
+					form.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+					{
+						PopUpManager.removePopUp(wrapper);
+						evt.playCallbacks();
+					});
+					
+				});
+				
+			}
+			
+			
+			protected function dg_keywords_clickHandler(event:MouseEvent):void
+			{
+				var selected:WSKeyword = dg_keywords.selectedItem as WSKeyword;
+				if(!selected){return};
+				setSelectedKeyword(selected);
+				
+			}
+			private function setSelectedKeyword(kw:WSKeyword):void
+			{
+				keywordModel.selectedKeyword = kw;
+				if(lt_selectedKeyword_attachedImages)
+				{
+					keywordModel.selectedKeyword_combos.removeAll();
+					keywordModel.selectedKeyword_attachedImages.removeAll();
+					lt_selectedKeyword_attachedImages.reset();
+					if(combos_for_keyword != null)
+					{
+					combos_for_keyword.reset();
+					}
+				} 
+			}
+			
+			protected function selectedKeyword_attachedImages_container_creationCompleteHandler(event:FlexEvent):void
+			{
+				lt_selectedKeyword_attachedImages.addEventListener("IMAGE_CLICK_EVENT",lt_selectedKeywordAttachedImage_IMAGE_CLICK_EVENT);
+			}
+			private function lt_selectedKeywordAttachedImage_IMAGE_CLICK_EVENT(event:Event):void
+			{
+				var image:WSImage = lt_selectedKeyword_attachedImages.selectedItem;
+				if(image != null)
+				{
+					//trace(image.keyword_ID);
+					trace(image.image_ID);
+					trace("open image viewer here")
+				}
+			}
+			
+		
+			protected function btn_removeKeyword_clickHandler(event:MouseEvent):void
+			{
+				if(!keywordModel.selectedKeyword)return;
+				Alert.show('Are you sure you want to remove '+truncate(keywordModel.selectedKeyword.keyword_text, 50),
+					'Remove Keyword',
+					Alert.YES | Alert.NO,
+					null,
+					function(evt:CloseEvent):void
+					{
+						if(evt.detail == Alert.YES)
+						{
+						
+							try
+							{
+								keywordController.remove_ws_keywords_by_keyword_ID(keywordModel.selectedKeyword,function(evt:ResultEvent):void
+								{
+								keywordModel.loadedKeywords.removeItemAt(keywordModel.loadedKeywords.getItemIndex(keywordModel.selectedKeyword));
+								keywordModel.selectedKeyword = null;
+								});
+								
+							}
+							catch(err:Error)
+							{
+								trace("can not remove from loaded keywords");
+							}
+						}
+					}
+				) 
+				
+			}
+			
+			protected function langChanger_changeHandler(event:IndexChangeEvent):void
+			{
+				AppModel.getInstance().currentBaseLanguage = langChanger.getSelectedLangCode();
+			}
+			protected function btn_save_clickHandler(event:MouseEvent):void
+			{
+				cc_langNav.save()
+			}
+			
+			private var kwds:CollapsibleTitleWindow;
+			private function onLOAD_KEYWORDS(event:Event):void
+			{
+				if(!kwds)
+				{
+					kwds = new CollapsibleTitleWindow;
+					var form:KeywordHelper = new KeywordHelper;
+					kwds.title = "Keyword List Helper";
+					kwds.addElement(form);
+					kwds.setStyle("skinClass", AWindowSkin);
+					kwds.addEventListener(CloseEvent.CLOSE, function(evt:CloseEvent):void
+					{
+						PopUpManager.removePopUp(kwds);
+					});
+					
+					form.addEventListener(KeywordEvent.APPLY_VALUES_TO_KEYWORDS,onAPPLY_VALUES_TO_KEYWORDS);
+					form.addEventListener("KEYWORDS_LOAD_COMPLETE", function(evt:Event):void
+					{
+						var loaded:Array = form.cc_keyword_loader.lastLoaded;
+						var notalreadyLoaded:Array = [];
+						
+						for each (var kw:WSKeyword in loaded)
+						{
+							if(!containsObjectWithSameParameterValue(kw.keyword_ID.toString(), "keyword_ID", keywordModel.loadedKeywords.source))
+							{
+								notalreadyLoaded.push(kw);
+							}
+						}
+						var all:Array = merge([keywordModel.loadedKeywords.source, notalreadyLoaded]);
+						keywordModel.loadedKeywords.source = all;
+						
+					});
+					form.addEventListener("CLEAR_KEYWORD_LIST", function(evt:Event):void
+					{
+						keywordModel.loadedKeywords.source = [];
+					});				
+					
+					
+				}
+				kwds.minimized = false;
+				PopUpManager.removePopUp(kwds);
+				PopUpManager.addPopUp(kwds,this);
+				PopUpManager.centerPopUp(kwds);
+			}
+			
+			private function onAPPLY_VALUES_TO_KEYWORDS(event:KeywordEvent):void
+			{
+				var selectedIndexes:Array = dg_keywords.getSelectedIndexes();
+				if(selectedIndexes.length<1){Alert.show("No Keywords Selected", "Apply to Keywords?"); return;};
+				Alert.show("Apply to Selected Keywords?", "Apply to Keywords?",Alert.NO|Alert.YES,null,
+					function(evt:CloseEvent):void
+					{
+						if(evt.detail == Alert.YES)
+						{
+							for (var i:int = 0; i < selectedIndexes.length; i++)
+							{
+								var kw_toUpdate:WSKeyword = keywordModel.loadedKeywords.getItemAt(selectedIndexes[i]) as WSKeyword;
+								if(event.keyword.keyword_type != null && event.keyword.keyword_type != '')
+								{
+									trace("setting kw "+kw_toUpdate.keyword_ID+" keyword_type to "+event.keyword.keyword_type)
+									kw_toUpdate.keyword_type = event.keyword.keyword_type;
+								}
+								if(event.keyword.keyword_tags != null && event.keyword.keyword_tags != '')
+								{
+									trace("setting kw "+kw_toUpdate.keyword_ID+" keyword_tags to "+event.keyword.keyword_tags)
+									kw_toUpdate.keyword_tags = event.keyword.keyword_tags;
+								}
+								keywordController.update_ws_keywords_by_keyword_ID(kw_toUpdate, function(evt:ResultEvent):void
+								{
+									trace("keyword updated "+evt.result.toString())
+								});
+							}
+						}
+					}
+				);
+			}	
+			private var translationRequests:SuperTitleWindow;
+			private function onSHOW_TRANSLATION_REQUESTS(event:Event):void
+			{
+				if(!translationRequests)
+				{
+					translationRequests = new SuperTitleWindow;
+					var form:TranslationRequestGrid = new TranslationRequestGrid;
+					translationRequests.title = "Requested Translations";
+					translationRequests.addElement(form);
+					translationRequests.setStyle("skinClass", SuperTitleWindowSkin);
+					translationRequests.addEventListener(CloseEvent.CLOSE, function(evt:CloseEvent):void
+					{
+						PopUpManager.removePopUp(translationRequests);
+					});
+					form.addEventListener(KeywordEvent.LOAD_FOR_TRANSLATION,onLOAD_FOR_TRANSLATION);
+					
+					translationRequests.narrowest = form.minWidth;
+					translationRequests.shortest = form.minHeight;
+					
+				}
+				translationRequests.minimized = false;
+				PopUpManager.removePopUp(translationRequests);
+				PopUpManager.addPopUp(translationRequests,this);
+				
+			}
+			
+				
+			private function onLOAD_FOR_TRANSLATION(event:KeywordEvent):void
+			{
+				var kw:WSKeyword = event.keyword;
+				var exists:Boolean;
+				for (var i:int = 0; i < keywordModel.loadedKeywords.length; i++)
+				{
+					if(keywordModel.loadedKeywords[i]["keyword_ID"] == kw.keyword_ID)
+					{
+						setSelectedKeyword(kw);
+						dg_keywords.selectedItem = keywordModel.selectedKeyword;
+						exists = true;
+						break;
+					}
+				}
+				if(!exists)
+				{
+					keywordModel.loadedKeywords.addItem(kw);
+					setSelectedKeyword(kw);
+					dg_keywords.selectedItem = keywordModel.selectedKeyword;
+				}
+			}
+			
+			
+			private var audioRequests:SuperTitleWindow;
+			private function onSHOW_AUDIO_REQUESTS(event:Event):void
+			{
+				if(!audioRequests)
+				{
+					audioRequests = new SuperTitleWindow;
+					var form:AudioRequestGrid = new AudioRequestGrid;
+					audioRequests.title = "Requested Audio";
+					audioRequests.addElement(form);
+					audioRequests.setStyle("skinClass", SuperTitleWindowSkin);
+					audioRequests.addEventListener(CloseEvent.CLOSE, function(evt:CloseEvent):void
+					{
+						PopUpManager.removePopUp(audioRequests);
+					});
+					//form.addEventListener(KeywordEvent.LOAD_FOR_TRANSLATION,onLOAD_FOR_TRANSLATION);
+					
+					audioRequests.narrowest = form.minWidth;
+					audioRequests.shortest = form.minHeight;
+					audioRequests.width = 450;
+					audioRequests.height = 350;
+					
+					
+				}
+				audioRequests.minimized = false;
+				PopUpManager.removePopUp(audioRequests);
+				PopUpManager.addPopUp(audioRequests,this);
+			}
+			
+			private function onADD_KEYWORD_TO_LIST(event:Event):void
+			{
+				var keywordTextToAdd:String = cc_keywordAdderBar.cbx_text.text;
+				var keywordToAdd:WSKeyword = new KeywordFactory().getInstance(keywordTextToAdd,AppModel.getInstance().currentBaseLanguage);
+				keywordController.get_ws_keywords_by_keyword_text({keyword_text:keywordTextToAdd}, function(evt:ResultEvent):void
+				{
+					var rh:WSKeywordResultHelper = new WSKeywordResultHelper;
+					if(rh.resultIsGood(evt.result as String))
+					{
+						var results:Array = rh.resultToArray(evt.result as String);
+						var matchingKeywords:Array = [];
+						for each (var matching:WSKeyword in results)
+						{
+							matchingKeywords.push(matching);
+						}
+						if(matchingKeywords.length>0)
+						{
+							var keywordComparer:KeywordComparer = new KeywordComparer();
+							keywordComparer.keywordToAdd = keywordToAdd;
+							keywordComparer.keywords = matchingKeywords;
+							PopUpManager.addPopUp(keywordComparer,parent);
+							PopUpManager.centerPopUp(keywordComparer);
+							
+							keywordComparer.addEventListener(KeywordEvent.ADD_TO_LIST, function(evt:KeywordEvent):void
+							{
+								var kw:WSKeyword = evt.keyword;
+								if(isNaN(kw.keyword_ID))
+								{
+									keywordController.add_ws_keyword(keywordToAdd,function(evt:ResultEvent):void
+									{
+										keywordToAdd.keyword_ID = Number(evt.result);
+										keywordModel.loadedKeywords.addItem(keywordToAdd);
+										dispatchEvent(new KeywordEvent(KeywordEvent.EVENT_KEYWORD_ADDED,keywordToAdd));
+									});
+								}
+								else
+								{
+									keywordModel.loadedKeywords.addItem(evt.keyword);	
+								}
+							});
+						}
+						else
+						{
+							keywordController.add_ws_keyword(keywordToAdd,function(evt:ResultEvent):void
+							{
+								keywordToAdd.keyword_ID = Number(extractResultResult(evt));
+								keywordModel.loadedKeywords.addItem(keywordToAdd);
+							});
+						}
+						
+					}
+				});
+			}
+			private function onREMOVE_FROM_LIST(event:KeywordEvent):void
+			{
+				keywordModel.loadedKeywords.removeItemAt(keywordModel.loadedKeywords.getItemIndex(event.keyword));
+			}
+			
+
+			protected function resize(event:ResizeEvent):void
+			{
+				toolBar.x = this.width-(toolBar.width+10);
+			}
+
+
+			protected function showComboAdder(combo:WSCombo):void
+			{
+				closeMe();
+				if(combo == null)
+				{
+				combo = new WSCombo;
+				}
+				combo.keyword_ID = keywordModel.selectedKeyword.keyword_ID;
+				var adder:ComboFromKeywordAdder = new ComboFromKeywordAdder;
+				PopUpManager.addPopUp(adder,this);
+				var model:ComboAdderViewModel = new ComboAdderViewModel;
+				model.selected_combo = combo;
+				adder.view_model = model;
+				keywordModel.comboAdderViewModel = model;
+				adder.title = keywordModel.selectedKeyword.keyword_text;
+				adder.addEventListener(CloseEvent.CLOSE, closeMe);
+				
+				function closeMe(ce:CloseEvent= null):void
+				{
+					PopUpManager.removePopUp(adder);
+					keywordModel.comboAdderViewModel = null;
+				}
+				
+			}
+
+
+			protected function use_image_in_combo_clickHandler(event:MouseEvent):void
+			{
+				if(lt_selectedKeyword_attachedImages.selectedItem == null){return}
+				keywordModel.comboAdderViewModel.image = lt_selectedKeyword_attachedImages.selectedItem as WSImage;
+			}
+
+
+			protected function get_matching_images_clickHandler(event:MouseEvent):void
+			{
+				lt_selectedKeyword_attachedImages.getImagesMatchingKeywordText();
+			}
+
+
+			protected function view_combo_clickHandler(event:MouseEvent):void
+			{
+				
+			}
+
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="add"/>
+	</s:states>
+	<s:VGroup  width="100%" height="100%" paddingTop="3" paddingBottom="3" paddingLeft="2" paddingRight="2">
+		
+		
+		<mx:VDividedBox width="100%" height="100%">
+			<!--Keyword SearchBar-->
+			<s:VGroup width="100%" height="100%">
+			<s:HGroup width="100%" verticalAlign="middle" paddingRight="3">
+				<keyword:KeywordAdderBar width="100%" id="cc_keywordAdderBar" />
+				<!--Current adding english as base language-->
+				<language:LanguageFlag toolTip="{langChanger.visible?'Hide Languages':'Show Languages'}" languageCode="{AppModel.getInstance().currentBaseLanguage}" buttonMode="true" useHandCursor="true" id="langFlag" click="{langChanger.includeInLayout = !langChanger.includeInLayout; langChanger.visible = !langChanger.visible}"/>
+				<language:LanguageDropDown toolTip="'Transcript Language'" includeInLayout="false" visible="false" id="langChanger" language="{AppModel.getInstance().currentBaseLanguage}" change="langChanger_changeHandler(event)"/>
+				
+			</s:HGroup>
+			<keyword:KeywordDataGrid id="dg_keywords" dataProvider="{keywordModel.loadedKeywords}" click="dg_keywords_clickHandler(event)" width="100%" height="100%"/>
+			</s:VGroup>
+			<s:VGroup width="100%" height="100%">
+		
+			<s:Group width="100%" height="100%" enabled="{keywordModel.selectedKeyword != null}">
+				<mx:TabNavigator width="100%" height="100%">
+					<s:NavigatorContent label="Text &amp; Audio" width="100%" height="100%">
+						<s:layout>
+							<s:VerticalLayout>
+							</s:VerticalLayout>
+						</s:layout>
+						<s:HGroup width="100%" height="100%">
+							<s:VGroup width="100%" height="100%">
+								<s:HGroup paddingLeft="5">
+									
+								</s:HGroup>
+								<keyword:KeywordLanguageNavigator id="cc_langNav" keyword="{keywordModel.selectedKeyword}" width="100%" height="100%">
+									
+								</keyword:KeywordLanguageNavigator>	
+							</s:VGroup>
+						</s:HGroup>
+					</s:NavigatorContent>
+					<s:NavigatorContent label="Combos">
+						<s:VGroup width="100%" height="100%" paddingLeft="2" paddingRight="2">
+							<s:HGroup width="100%" horizontalAlign="left">
+								<buttons:WSIconButton width="24" height="24" icon="{IconLib.ADD_16}" toolTip="Add Combination" id="add_combination" click="showComboAdder(null)"/>
+								<buttons:WSIconButton width="24" height="24" visible="{combos_for_keyword.selectedCombo != null}" icon="{IconLib.TRASH_16}" toolTip="Remove Combo" click="combos_for_keyword.removeCombo()"/>
+								<buttons:WSIconButton width="24" height="24" visible="{combos_for_keyword.selectedCombo != null}" icon="{IconLib.EYE_16}" toolTip="View Combo" click="showComboAdder(combos_for_keyword.selectedCombo)"/>
+								<buttons:WSIconButton width="24" height="24" visible="{keywordModel.selectedKeyword != null}" icon="{IconLib.RELOAD}"  toolTip="Get Combos" click="{combos_for_keyword.getCombos()}"/>
+							</s:HGroup>	
+							<s:HGroup width="100%" height="100%">
+								<combo:CombosForKeyword id="combos_for_keyword" width="100%" height="100%">
+									
+								</combo:CombosForKeyword>
+							</s:HGroup>	
+						</s:VGroup>	
+					</s:NavigatorContent>
+					<s:NavigatorContent  label="Slides" width="100%" height="100%" >
+						<s:VGroup id="selectedKeyword_attachedImages_container" creationComplete="selectedKeyword_attachedImages_container_creationCompleteHandler(event)" width="100%" height="100%">
+							<s:HGroup width="100%" paddingRight="3" paddingLeft="3">
+								<s:HGroup width="100%" horizontalAlign="left" gap="20">
+									<buttons:WSIconButton width="24" height="24" icon="{IconLib.ADD_16}" toolTip="Add Slide" click="lt_selectedKeyword_attachedImages.openSlideAdder()"/>
+									<buttons:WSIconButton width="24" height="24" visible="{lt_selectedKeyword_attachedImages.selectedItem != null}"  icon="{IconLib.EYE_16}" toolTip="View Slide" click="lt_selectedKeyword_attachedImages.openSlideViewer()"/>
+									<buttons:WSIconButton width="24" height="24" visible="{lt_selectedKeyword_attachedImages.selectedItem != null}"  icon="{IconLib.DETAILS_LIST_16}" toolTip="Edit Details" click="lt_selectedKeyword_attachedImages.openSlideDetails()"/>
+									<!--<buttons:WSIconButton width="24" height="24" visible="{lt_selectedKeyword_attachedImages.selectedItem != null}" icon="{IconLib.TRASH_16}" toolTip="Remove Slide" click="lt_selectedKeyword_attachedImages.removeSlideFromKeyword()"/>
+									--><buttons:WSIconButton width="24" height="24" visible="{lt_selectedKeyword_attachedImages.selectedItem != null &amp;&amp; keywordModel.comboAdderViewModel != null}" icon="{IconLib.COMBINE_16}" toolTip="Use Slide in Combo" id="use_image_in_combo" click="use_image_in_combo_clickHandler(event)"/>
+									<buttons:WSIconButton width="24" height="24"  icon="{IconLib.RELOAD}" toolTip="Get matching Slides" id="get_matching_images" click="get_matching_images_clickHandler(event)"/>
+								
+								</s:HGroup>
+							</s:HGroup>
+							<keyword:KeywordSlideList dataProvider="{keywordModel.selectedKeyword_attachedImages}" width="100%" height="100%" id="lt_selectedKeyword_attachedImages" itemRenderer="views.slide.MySlideRenderer"  >
+								<keyword:layout>
+									<s:TileLayout>
+										
+									</s:TileLayout>
+								</keyword:layout>
+							</keyword:KeywordSlideList>
+							
+							<!--<s:List width="100%" height="100%" id="lt_selectedKeyword_attachedImages2" dataProvider="{KeywordAdminModel.getInstance().selectedKeyword_attachedImages}" itemRenderer="views.image.ImageSearchRenderer">
+								<s:layout>
+									<s:TileLayout>
+										
+									</s:TileLayout>
+								</s:layout>
+							</s:List>-->
+						</s:VGroup>
+					</s:NavigatorContent>
+					
+					<s:NavigatorContent label="Other">
+						<keyword:KeywordAdditionalInfo keyword="{keywordModel.selectedKeyword}" width="100%" height="100%">
+						</keyword:KeywordAdditionalInfo>
+					</s:NavigatorContent>	
+				</mx:TabNavigator>
+			</s:Group>	
+		
+		<s:HGroup width="100%" paddingLeft="3" paddingRight="3">
+			<s:HGroup width="100%" height="100%">
+				<buttons:WSIconButton width="150" icon="{IconLib.TRASH_16}" id="btn_removeKeyword" toolTip="Remove Keyword" label="Remove Keyword" visible="{keywordModel.selectedKeyword != null &amp;&amp; keywordModel.selectedKeyword.keyword_addedby == AppModel.getInstance().signedInContributor.ID}" click="btn_removeKeyword_clickHandler(event)"/>
+			</s:HGroup>
+			<s:HGroup width="100%" height="100%" horizontalAlign="right" paddingRight="3">
+				<buttons:WSIconButton width="150" icon="{IconLib.SAVE_16}" id="btn_save" toolTip="Save Keyword" label="Save Keyword" visible="{keywordModel.selectedKeyword != null &amp;&amp; !isNaN(keywordModel.selectedKeyword.keyword_ID)}" click="btn_save_clickHandler(event)"/>	
+			</s:HGroup>		
+		</s:HGroup>	
+				
+			</s:VGroup>
+		</mx:VDividedBox>
+	</s:VGroup>
+	
+	<views:ToolBar id="toolBar" />
+</s:Group>

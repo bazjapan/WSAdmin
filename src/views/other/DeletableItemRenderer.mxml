@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer name="DeletableIconItemRenderer"
+				xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				focusEnabled="false" xmlns:mx="library://ns.adobe.com/flex/mx" width="100%">
+	<!-- states -->
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="hovered" />
+		<s:State name="selected" />
+		<s:State name="normalAndShowsCaret"/>
+		<s:State name="hoveredAndShowsCaret"/>
+		<s:State name="selectedAndShowsCaret"/>
+	</s:states>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			
+			
+			
+			
+			
+
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("REMOVE_ITEM_EVENT",true));
+			}
+
+		]]>
+	</fx:Script>
+
+	<s:HGroup  height="20"  width="100%" verticalAlign="middle">
+	<s:Label id="labelDisplay" textAlign="left" width="100%"
+				  verticalCenter="0" text="{data.label}"
+				  />
+		<s:HGroup width="100%" horizontalAlign="right">
+		<mx:Image width="16" height="16" buttonMode="true" id="btn_remove" click="btn_remove_clickHandler(event)"  source="{IconLib.DELETE_16}" toolTip="Remove Item"/>
+		</s:HGroup>
+	</s:HGroup>
+</s:ItemRenderer>

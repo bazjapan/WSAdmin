@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" minWidth="300" xmlns:language="views.language.*">
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.events.KeywordEvent;
+			protected function btn_load_keyword_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new KeywordEvent(KeywordEvent.ADD_TO_LIST,keyword));
+				btn_load_keyword.visible = false;
+			}
+		]]>
+	</fx:Script>
+
+	
+	<fx:Declarations>
+		<s:SolidColor id="normalColor" color="#000000"/>
+		<s:SolidColor id="hoveredColor" color="#FF0000"/>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSKeyword;
+			
+			[Bindable]
+			private var keyword:WSKeyword;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				keyword = value as WSKeyword;
+				
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="normal"/>
+		<s:State name="hovered"/>
+	</s:states>
+	
+	<s:layout>
+		<s:HorizontalLayout paddingLeft="5" paddingTop="5" paddingRight="5" paddingBottom="5" verticalAlign="middle" />
+	</s:layout>
+	
+	<s:Ellipse fill="{normalColor}" fill.hovered="{hoveredColor}" width="10" height="10" />
+	<s:VGroup paddingLeft="3" width="100%">
+		<s:Label text="{keyword.keyword_text}" width="100%"/>
+		<s:Label text="{keyword.keyword_type}" width="100%"/>
+		<s:HGroup width="100%" verticalAlign="middle">
+			<language:LanguageFlag languageCode="{keyword.keyword_language}" />
+			<s:Label text="{keyword.keyword_date_added}" width="100%"/>
+		</s:HGroup>
+		<s:Label includeInLayout="{keyword.keyword_tags.length &gt; 0}" text="{keyword.keyword_tags}" width="100%"/>
+	</s:VGroup>
+	<s:HGroup horizontalAlign="right" paddingRight="3">
+		<mx:Image buttonMode="true" source="{IconLib.LOAD_KEYWORDS_16}"  width="16" height="16"  toolTip="Load" id="btn_load_keyword" click="btn_load_keyword_clickHandler(event)"/>
+	</s:HGroup>
+</s:ItemRenderer>

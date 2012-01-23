@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="450" height="464" creationComplete="group1_creationCompleteHandler(event)" xmlns:language="views.language.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.AudioRequest;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.AudioEvent;
+			import jp.wordsmart.factory.AudioRequestFactory;
+			import jp.wordsmart.json.controllers.AudioRequestController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			
+			
+			[Bindable]
+			public var audio_request:AudioRequest;
+			
+			private var controller:AudioRequestController = new AudioRequestController(DomainSettings.API_URL);
+			
+			public function setDialect(lang_code:String, dialect_code:String):void
+			{
+				dd_dialects.setDialect(lang_code, dialect_code);
+			}
+			
+			protected function btn_makeRequest_clickHandler(event:MouseEvent):void
+			{
+				var dialect:String = dd_dialects.selectedItem["dialect_code"];
+				audio_request.audio_request_transcript = ta_transcript.text;
+				audio_request.audio_request_notes = ta_note.text;
+				audio_request.audio_request_mood = cbx_mood.selectedItem as String;
+				audio_request.audio_request_dialect = dialect;
+				var gender:String = togg_gender.dataProvider[togg_gender.selectedIndex];
+				audio_request.audio_request_gender = gender;
+				if(isNaN(audio_request.audio_request_ID))
+				{
+				
+					audio_request = new AudioRequestFactory().getInstance(
+						audio_request.audio_request_language,ta_note.text,ta_transcript.text,dialect,"X",gender, cbx_mood.selectedItem as String);
+					
+					controller.add_audio_request(audio_request,function(evt:ResultEvent):void
+					{
+						
+						if(Number(evt.result) == 0)
+						{
+							Alert.show("Unable to add request please try again");
+						}
+						else
+						{
+							audio_request.audio_request_ID = Number(evt.result);
+							lb_status.text = "Request added.";
+							closeMe();
+							
+						}
+						
+					})}
+				else
+				{
+					//do other updates here
+					audio_request.audio_request_notes = ta_note.text;
+					audio_request.audio_request_transcript = ta_transcript.text;
+					controller.update_audio_request(audio_request,function(evt:ResultEvent):void
+					{
+						lb_status.text = "Request updated.";
+						
+					})	
+				}
+			}
+			
+			
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				controller.remove_request_by_id(audio_request.audio_request_ID,function(evt:ResultEvent):void
+				{
+					//lb_status.text = "Request removed.";
+					//form.enabled = false;
+					closeMe();
+				});
+			}
+			
+			
+			[Bindable]
+			public var moods:ArrayCollection = new ArrayCollection(WordSmartConstants.audioMoods);
+			
+			
+			private function closeMe():void
+			{
+				dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+			}
+			
+
+			protected function btn_recordAudio_clickHandler(event:MouseEvent):void
+			{
+				var da:WSAudio = getDefaultAudio();
+				da.audio_language = audio_request.audio_request_language;
+				da.audio_transcript = audio_request.audio_request_transcript;
+				da.audio_mood = audio_request.audio_request_mood
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO,da,true));
+			
+			}
+
+
+			protected function group1_creationCompleteHandler(event:FlexEvent):void
+			{
+				setMood(audio_request.audio_request_mood);
+				setDialect(audio_request.audio_request_language, audio_request.audio_request_dialect)
+			}
+			
+			public function setMood(mood:String):void
+			{
+				var counter:int
+				var moodIndex:int
+				for each (var str:String in moods)
+				{
+					if(str == mood)
+					{
+						moodIndex = counter;
+						break;
+					}
+					counter++;
+				}
+				cbx_mood.selectedIndex = moodIndex;
+				
+			}
+			
+			protected function btn_mark_done_clickHandler(event:MouseEvent):void
+			{
+				if(!audio_request)return;
+				
+				audio_request.audio_request_fulfilled_by = AppModel.getInstance().signedInContributor.ID;
+				controller.update_audio_request(audio_request,function(evt:ResultEvent):void
+				{
+					closeMe();
+				}); 
+			}
+
+		]]>
+	</fx:Script>
+	
+	<mx:Form width="100%" height="100%" id="form">
+		<mx:FormItem label="Language/Dialect" width="100%">
+			<s:HGroup width="100%" height="100%" verticalAlign="middle" >
+			<s:Label text="{languageCodeToText(audio_request.audio_request_language)}"/>
+			<s:HGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="right">
+			<language:DialectDropDown id="dd_dialects" allowAny="true"/>	
+			</s:HGroup>
+				
+			</s:HGroup>
+		</mx:FormItem>
+		<mx:FormItem label="Mood">
+			<s:HGroup width="100%" height="100%">
+			
+			<s:HGroup width="100%" horizontalAlign="left">
+				<s:ComboBox id="cbx_mood" dataProvider="{moods}" selectedIndex="0"></s:ComboBox>	
+			</s:HGroup>
+			<s:HGroup horizontalAlign="right">
+				<mx:ToggleButtonBar width="120" toolTip="Recorder Gender" id="togg_gender" selectedIndex="0" dataProvider="{['X','M','F']}">
+				</mx:ToggleButtonBar>
+			</s:HGroup>
+				
+			</s:HGroup>
+		</mx:FormItem>
+		<mx:FormItem width="100%" label="Transcript">
+			<s:TextArea id="ta_transcript" width="100%" height="181" text="{audio_request.audio_request_transcript}"></s:TextArea>	
+		</mx:FormItem>
+		<mx:FormItem label="Note">
+			<s:TextArea id="ta_note" text="{audio_request.audio_request_notes}" width="250"/>
+		</mx:FormItem>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle" paddingRight="5">
+			<mx:Image buttonMode="true" source="{IconLib.DELETE_32}" width="24" height="14" toolTip="Delete Request"  enabled="{audio_request != null}" id="btn_remove" click="btn_remove_clickHandler(event)"/>
+			<s:Label id="lb_status" width="100%" textAlign="center"/>
+			<mx:Image buttonMode="true" source="{IconLib.MARK_AS_DONE_32}" width="32" height="32"  visible="{audio_request != null}" toolTip="Mark Request as Done" id="btn_mark_done" click="btn_mark_done_clickHandler(event)"/>
+			<mx:Image buttonMode="true" source="{IconLib.MICROPHONE_32}" width="32" height="32" toolTip="Record Audio" id="btn_recordAudio" click="btn_recordAudio_clickHandler(event)"/>
+			<mx:Image buttonMode="true" source="{isNaN(audio_request.audio_request_ID)?IconLib.WAND_32:IconLib.SAVE_32}" width="32" height="32" toolTip="{isNaN(audio_request.audio_request_ID)?'Make Request':'Update Request'}" id="btn_makeRequest" click="btn_makeRequest_clickHandler(event)"/>
+		</s:HGroup>
+	</mx:Form>
+	
+	
+	
+</s:Group>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="{model.width}" height="{model.height+30}" creationComplete="cc()" minWidth="955" minHeight="600" xmlns:c="com.flexblocks.imagecropper.*"
+		 >
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Image;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.Label;
+			
+			[Bindable]public var model:ImageCropModel;
+			public var cropCallback:Function;
+			
+			
+			private function cc():void
+			{
+				cropper.addEventListener(ImageCropper.SOURCE_IMAGE_LOAD_ERROR, function(evt:Event):void
+				{
+					trace("ImageCropper.SOURCE_IMAGE_LOAD_ERROR")
+				});
+				
+				cropper.addEventListener(ImageCropper.SOURCE_IMAGE_LOADING, function(evt:Event):void
+				{
+					trace("ImageCropper.SOURCE_IMAGE_LOADING");
+				})
+				
+				cropper.cropRectUpdateCallback = function(type:String, cropRect:Rectangle):void
+				{
+					bc_imageDetails.visible = true;
+					bc_imageDetails.x = cropRect.x+(cropRect.width/2)+(bc_imageDetails.width/2);
+					bc_imageDetails.y = cropRect.y+(cropRect.height/2)+(bc_imageDetails.height/2);
+					
+					if(type == 'r')
+					{
+						lb_height.text = "Height: "+cropRect.height;
+						lb_width.text = "Width: "+cropRect.width;
+					}
+					else if(type == 'm')
+					{
+						lb_height.text = "x: "+cropRect.x;
+						lb_width.text = "y: "+cropRect.y;	
+					}
+				};
+				
+				
+				
+				loadImageSource(model.imageSource);
+				
+			}
+			
+			public function loadImageSource(imageSrc:Object):void
+			{
+				cropper.enabled = true;
+				cropper.sourceImage = imageSrc;
+			}
+			
+			private function imageReady():void {
+				
+				enableControls(true, true);
+				trace("imageReady ");
+				cropper.setCropRect();
+				cropper.backgroundColor = model.bgColor;
+				cropper.handleColor = model.handleColor;
+				cropper.maskColor = model.maskColor;
+				cropper.maskAlpha = model.maskAlpha;
+			}
+			public function doCrop():void
+			{
+				
+				bc_imageDetails.visible = false;
+				var newImage:BitmapData = cropper.croppedBitmapData;
+				var r:Rectangle = cropper.getCropRect();
+				var cropData:Object = {'x':r.x,'y':r.y,'w':r.width,'h':r.height};
+				cropCallback(newImage, cropData);
+				trace("doCrop")
+				//cropper.sourceImage = newImage;
+				//cropperHeight = newImage.height;
+				//cropperWidth = newImage.width;
+				
+			}
+			
+			// --------------------------------------------------------------------------------------------------
+			// doCrop - Get the cropped image from the ImageCropper component
+			// --------------------------------------------------------------------------------------------------
+			
+			private function cropRectChanged():void {
+				bc_imageDetails.visible = false;
+				trace("cropRectChanged")
+			}	
+			
+			private function loadOriginalURL():void
+			{
+				if(model.originalURL != null && model.originalURL  != '')
+				{
+					//cropper.enabled = false;
+					cropper.sourceImage = model.originalURL ;
+					enableControls(false);
+				}
+			}
+			
+			private function enableControls(enable:Boolean, includeEnabled:Boolean = false):void {
+				hg_controls.enabled = enable;
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup >
+		
+		
+		<s:Group  id="wrapper" width="{model.width}" height="{model.height}" >
+			
+			
+			<c:ImageCropper id="cropper" width="100%" height="100%"  enabled="false" backgroundColor="{model.bgColor}" backgroundAlpha="{model.bgAlpha}" handleColor="{model.handleColor}" maskColor="{model.maskColor}" maskAlpha="{model.maskAlpha}"
+							sourceImageReady="imageReady()"  sourceImageLoadError="trace('Error while loading image')" cropRectChanged="cropRectChanged()" cropConstraintDisabled="false"
+							/>			
+			
+			
+			<s:BorderContainer visible="false" id="bc_imageDetails" backgroundColor="0" backgroundAlpha="0.5"  height="22" cornerRadius="8">
+				<s:layout>
+					<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle" paddingRight="5" paddingLeft="5"/>
+				</s:layout>
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+					<s:Label id="lb_height" fontSize="12" color="0xFFFFFF"/>	
+				</s:HGroup>
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+					<s:Label id="lb_width" fontSize="12" color="0xFFFFFF" />	
+				</s:HGroup>
+			</s:BorderContainer>
+		</s:Group>	
+		
+		<s:HGroup id="hg_controls" height="30" enabled="false">
+			<s:Button label="Crop" click="{doCrop()}"/>
+			</s:HGroup>
+	</s:VGroup>	
+</s:Group>

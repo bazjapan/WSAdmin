@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" borderVisible="{model.bw &gt; 0}" borderWeight="{model.bw}" borderColor="{model.bc}" borderAlpha="{model.ba}"   backgroundColor="{model.bgc}" backgroundAlpha="{model.bga}"  width="100%" height="100%">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+<!--	<s:Rect width="100%" height="100%">
+		<s:fill><s:SolidColor color="{model.backgroundColor}" alpha="{model.backgroundAlpha}"/></s:fill>
+		<s:stroke>
+			<s:SolidColorStroke color="{model.borderColor}" alpha="{model.borderAlpha}" weight="{model.borderWeight}"/>
+		</s:stroke>
+	</s:Rect>-->
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.components.dynoSlide.models.DynoSlideBackgroundModel;
+			[Bindable]public var model:DynoSlideBackgroundModel;
+			
+			
+			
+		]]>
+	</fx:Script>
+<!--	<mx:SWFLoader id="loader" maintainAspectRatio="false" source="{model.bgu}" includeInLayout="false" visible="false"/>
+	<s:BitmapImage includeInLayout="{model.uu}" visible="{model.uu}" id="bitmapImage" width="100%" height="100%"/>
+	-->
+</s:BorderContainer>

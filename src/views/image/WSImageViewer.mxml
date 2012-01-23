@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group  xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc(event)"  xmlns:components="jp.wordsmart.components.*">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+		]]>
+	</fx:Script>
+	
+	
+	<fx:Declarations>
+		<s:Fade id="fadeIn" alphaFrom="{0}" alphaTo="1" />
+		<s:Fade id="fadeOut"  alphaFrom="{1}" alphaTo="2" />
+		<s:GlowFilter id="glow" blurX="12" blurY="12" color="#88AEF7" quality="2" strength="1"/>
+		<s:DropShadowFilter id="dropShadow" alpha="0.35" blurX="6" blurY="6" distance="6" color="#000000" angle="90" />
+		
+		
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.utils.progressEventToPercent;
+			
+			import mx.events.FlexEvent;
+			
+			import utils.http.getStealthURLRequest;
+			
+			
+			[Bindable]
+			private var _image:jp.wordsmart.dto.WSImage;
+			
+			public var imageLoadCompleteFunc:Function;
+			public var imageLoadErrorFunc:Function;
+			[Bindable] private var imageMaxWidth:int;
+			[Bindable] private var imageMaxHeight:int;
+			[Bindable] public var imageGood:Boolean;
+			
+			
+			
+			public function get image():jp.wordsmart.dto.WSImage
+			{
+				return _image;
+			}
+
+			public function set image(value:jp.wordsmart.dto.WSImage):void
+			{
+				_image = value;
+				imageGood = false;
+				currentState = "loading";
+				if(img_Main && bc_imageDetails)
+				{
+				fadeOut.play([img_Main, bc_imageDetails]);
+				}
+				var wholeURL:String = _image.image_url;
+				var req:URLRequest = getStealthURLRequest(wholeURL);
+				var imageLoader:Loader = new Loader();
+				
+				if(lb_loading!= null){lb_loading.text = "Loading Image 0%"};
+				imageLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, 
+					function(evt:Event):void
+					{
+						currentState = "showing";
+						var bm:Bitmap = Bitmap(imageLoader.content);
+						trace(bm.height)
+						trace(bm.width)
+						validateImage(bm.height, bm.width);
+						img_Main.source = bm;
+						fadeIn.play([img_Main, bc_imageDetails]);
+						image.image_w = bm.width;
+						image.image_h = bm.height;
+						if(imageLoadCompleteFunc != null)
+						{
+						imageLoadCompleteFunc(image);
+						}
+						
+					});
+				
+				imageLoader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, 
+					function(evt:IOErrorEvent):void{
+						lb_loading.text = "Unable to Load Image"
+					if(imageLoadErrorFunc!=null){imageLoadErrorFunc();};
+				});
+				imageLoader.contentLoaderInfo.addEventListener(ProgressEvent.PROGRESS, 
+					function(evt:ProgressEvent):void{
+						var perc:String = progressEventToPercent(evt).toString()
+						trace("Progress "+perc);
+						lb_loading.text = "Loading Image "+perc+"%";
+					});
+				imageLoader.load(req);
+			}
+
+			protected function cc(event:FlexEvent):void
+			{
+			
+			}
+			
+			private function validateImage(h:int,w:int):void
+			{
+				var hOK:Boolean = h>=WordSmartConstants.MIN_IMAGE_HEIGHT;
+				var wOK:Boolean = w>=WordSmartConstants.MIN_IMAGE_WIDTH;
+				imageGood = hOK && wOK;
+				img_is_height_ok.source = hOK?IconLib.CHECK_16:IconLib.CROSS_16;
+				img_is_height_ok.toolTip = hOK?'Image height is ok':'Image is too short';
+				img_is_width_ok.source = wOK?IconLib.CHECK_16:IconLib.CROSS_16;
+				img_is_width_ok.toolTip = wOK?'Image width is ok':'Image is too narrow';
+				lb_is_height_ok.text = "Height: "+h;
+				lb_is_width_ok.text = "Width: "+w;
+				lb_is_height_ok.toolTip = "Height: "+h+" px";
+				lb_is_width_ok.text = "Width: "+w;
+				lb_is_width_ok.toolTip = "Width: "+w+" px";
+				
+				dispatchEvent(new Event("EVENT_IMAGE_VALIDATION_COMPLETE"));
+			}
+		
+
+
+			
+
+
+			protected function imageHolder_creationCompleteHandler(event:FlexEvent):void
+			{
+				imageMaxHeight = imageHolder.height;
+				imageMaxWidth = imageHolder.width;
+				trace("maxH "+imageMaxHeight);
+				trace("maxW "+imageMaxWidth);
+			}
+			
+			public function getBitMapData():BitmapData
+			{
+				if(img_Main.source is BitmapData)
+				{
+					return img_Main.source as BitmapData;
+				}
+				var bmd:BitmapData = Bitmap(img_Main.source).bitmapData;
+				return bmd;
+			}
+
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="showing"/>
+		<s:State name="loading"/>
+	</s:states>
+	
+	<s:VGroup width="100%" height="100%">
+		
+	
+	<s:Group includeIn="showing" width="100%" height="100%" id="imageHolder" creationComplete="imageHolder_creationCompleteHandler(event)" >
+		<s:layout>
+			<s:VerticalLayout horizontalAlign="center" verticalAlign="middle"/>
+		</s:layout>
+		
+		<s:BitmapImage id="img_Main" maxHeight="{imageMaxHeight}" maxWidth="{imageMaxWidth}" />
+		
+	</s:Group>
+		
+		<s:VGroup includeIn="loading" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+			<s:Label id="lb_loading" fontSize="30" color="0x000000" fontWeight="bold" filters="{[glow,dropShadow]}"/>
+		</s:VGroup>	
+		
+		
+	</s:VGroup>
+	<s:BorderContainer id="bc_imageDetails" visible="false" bottom="2" right="2" backgroundColor="0" backgroundAlpha="0.5" height="30" cornerRadius="8">
+		<s:layout>
+			<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle" paddingRight="5" paddingLeft="5"/>
+		</s:layout>
+		<s:HGroup verticalAlign="middle" horizontalAlign="center">
+			<s:Label id="lb_is_height_ok" fontSize="16" color="0xFFFFFF" text="Height:"/>	
+			<mx:Image id="img_is_height_ok" source="{IconLib.CHECK_16}"/>
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" horizontalAlign="center">
+			<s:Label id="lb_is_width_ok" fontSize="16" color="0xFFFFFF" text="Width:"/>	
+			<mx:Image id="img_is_width_ok" source="{IconLib.CROSS_16}"/>
+		</s:HGroup>
+	</s:BorderContainer>
+	
+</s:Group>
+	
+

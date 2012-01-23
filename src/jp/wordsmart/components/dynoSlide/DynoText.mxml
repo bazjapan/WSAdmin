@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" borderVisible="{model.bw &gt; 0}"  visible="{model.visible}"  backgroundAlpha="{model.bga}" borderAlpha="{model.ba}" blendMode="{model.bm}" backgroundColor="{model.bgc}" borderWeight="{model.bw}" borderColor="{model.bc}"  x="{model.x}" y="{model.y}" rotation="{model.rotation}"  xmlns:dynoSlide="jp.wordsmart.components.dynoSlide.*" width="{model.width}" height="{model.height}">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.components.dynoSlide.models.DynoTextModel;
+			
+			import spark.events.TextOperationEvent;
+			
+			[Bindable]public var model:DynoTextModel;
+			
+
+			protected function txt_changeHandler(event:TextOperationEvent):void
+			{
+				model.text = txt.text;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:TextArea horizontalScrollPolicy="off" verticalScrollPolicy="off" change="txt_changeHandler(event)" textAlign="{model.ha}" fontStyle="{model.st}" fontWeight="{model.fw}" id="txt" width="100%" height="100%" fontSize="{model.fs}" textAlpha="{model.ta}"  text="{model.text}"
+				borderVisible="false" contentBackgroundAlpha="0" color="{model.tc}" focusAlpha="0">
+		
+	</s:TextArea>
+	
+</s:BorderContainer>

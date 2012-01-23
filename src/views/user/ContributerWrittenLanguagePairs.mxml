@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="290" creationComplete="cc()" xmlns:language="views.language.*">
+	<s:layout>
+		<s:VerticalLayout horizontalAlign="center" verticalAlign="middle"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.utils.language.dialectCodetoLanguageObject;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import utils.array.removeDuplicates;
+			import utils.removeDuplicateObjects;
+			
+			import views.language.LanguagePairEdtor;
+			
+			[Bindable]
+			public var contributor:Contributer;
+			
+			public var showLanguageChoices:Function;//params array of excludes + callback
+			
+			private function cc():void
+			{
+				
+				vg_pairs.addEventListener("REMOVE_ITEM_EVENT",onREMOVE_ITEM_EVENT);
+			}
+			
+			[Bindable]
+			public var isValid:Boolean;
+			
+			private function checkIsValid():Boolean
+			{
+				return true
+			}
+			
+			private function onREMOVE_ITEM_EVENT(event:Event):void
+			{
+				var index:int = vg_pairs.getChildIndex(event.target as DisplayObject);
+				vg_pairs.removeElementAt(index);
+			}
+			
+			public function setContributer(cont:Contributer):void
+			{
+				contributor = cont;
+				if(!isNaN(contributor.ID))
+				{
+					
+					for each (var obj:Object in contributor.translationPairs)
+					{
+						addLangPair(obj);	
+					}
+					
+				}
+				isValid = checkIsValid();
+			}
+			
+			
+			protected function btn_add_lang_clickHandler(event:MouseEvent):void
+			{
+				addLangPair(null);
+				
+			}
+			
+			private function addLangPair(transPair:Object = null):void
+			{
+				var langPairEditor:LanguagePairEdtor = new LanguagePairEdtor;
+				langPairEditor.showLanguageChoices = showLanguageChoices;
+				vg_pairs.addElement(langPairEditor);
+				if(transPair){langPairEditor.setTransPair(transPair)};
+			}
+			
+			public function saveContributer():void
+			{
+				var numElements:int = vg_pairs.numElements;
+				var pairs:Array = [];
+				var validPairs:Array = [];
+				for (var i:int = 0; i < numElements; i++)
+				{
+					pairs.push(vg_pairs.getElementAt(i));	
+				}
+				for each (var editor:LanguagePairEdtor in pairs)
+				{
+					var transPair:Object = editor.getTransPair();
+					if(transPair != null)
+					{
+						validPairs.push(transPair);
+					}
+				}
+				
+				var duplicatesRemoved:Array = removeDuplicateObjects(validPairs, ["dest", "src", "type"]);
+				contributor.user_trans_pairs = JSON.encode(duplicatesRemoved);
+				trace(contributor.user_trans_pairs);
+				
+			
+			}
+			
+			
+			
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Form width="100%" height="100%">
+		<s:HGroup verticalAlign="middle" width="100%" paddingBottom="10">
+			<s:Label text="Translation &amp; Proofing" fontWeight="bold" width="100%"/>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<mx:Image source="{IconLib.MARK_AS_DONE_16}" width="16" height="16" visible="{isValid}"/>
+			</s:HGroup>
+		</s:HGroup>
+		
+		<s:VGroup width="100%" >
+			
+			<s:HGroup width="100%" verticalAlign="middle" paddingBottom="5">
+				<s:Label text="Add Language Pair" width="100%" fontWeight="bold"/>	
+				<s:HGroup width="100%" horizontalAlign="right">
+					<mx:Image width="16" height="16" buttonMode="true" id="btn_add_lang" click="btn_add_lang_clickHandler(event)" source="{IconLib.ADD_16}" toolTip="Add Language"/>	
+				</s:HGroup>
+			</s:HGroup>
+			
+				<s:Scroller width="100%" height="190">
+					<s:VGroup id="vg_pairs" width="100%" height="100%" >
+					</s:VGroup>
+				</s:Scroller>
+		
+		</s:VGroup>
+		
+		
+	</mx:Form>
+</s:Group>

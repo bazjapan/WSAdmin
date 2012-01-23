@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:audio="views.audio.*" creationComplete="cc()" initialize="init()">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			import com.noteflight.standingwave3.elements.AudioDescriptor;
+			import com.noteflight.standingwave3.elements.Sample;
+			import com.noteflight.standingwave3.formats.WaveFile;
+			import com.noteflight.standingwave3.output.AudioPlayer;
+			import com.noteflight.standingwave3.performance.AudioPerformer;
+			import com.noteflight.standingwave3.performance.ListPerformance;
+			
+			import org.bytearray.micrecorder.encoder.WaveEncoder;
+			private var all_BAs:Array = [];
+			private var total_downloaded:int;
+			protected function stitch_clickHandler(event:MouseEvent):void
+			{
+				total_downloaded = 0;
+				for each (var sen:SentenceToAudio in sound_makers)
+				{
+					if(sen.canDownload){total_downloaded++}
+				}
+				
+				trace("clearing bas")
+				//all_BAs = [];
+				play_index = 0;
+				play(play_index);
+				
+			}
+			private var play_index:int = 0;
+			private function play(index:int):void
+			{
+				if(sound_makers.length>index){
+				var sta:SentenceToAudio = sound_makers[index] as SentenceToAudio;
+				if(sta.canDownload)
+				{
+				sta.audioPlayer.addEventListener("EVENT_AUDIO_PLAY_COMPLETE", onEVENT_AUDIO_PLAY_COMPLETE);
+				sta.audioPlayer.btn_play_clickHandler();
+				trace("adding to ba")
+				//all_BAs.push(sta.audioPlayer.getData());
+				}
+				else
+				{
+					play_index++;
+					play(play_index);	
+				}
+				}
+			}
+
+			private function onEVENT_AUDIO_PLAY_COMPLETE(event:Event):void
+			{
+				play_index++;
+				play(play_index);
+				if(play_index==total_downloaded)
+				{
+					/* var counter:int = 0;
+				
+					for each (var ba:ByteArray in all_BAs)
+					{
+						var src:Sample = WaveFile.createSample(ba)
+					
+					var sequence:ListPerformance = new ListPerformance()
+					sequence.addSourceAt(counter, src)
+					}
+					var ap:AudioPerformer = new AudioPerformer(sequence, new AudioDescriptor())
+					var player:AudioPlayer = new AudioPlayer();
+					player.play(ap); */
+				}
+			}
+			private function playAll():void
+			{
+				var counter:int = 0;
+				var sequence:ListPerformance = new ListPerformance()
+					
+				for each (var sen:SentenceToAudio in sound_makers)
+				{
+					if(sen.canDownload){
+						var we:WaveEncoder = new WaveEncoder();
+						var waved:ByteArray = we.encode(sen.audioPlayer.getData());
+						var src:Sample = WaveFile.createSample(waved);
+						sequence.addSourceAt(counter, src);
+						counter++;
+					}
+				}
+				
+				var ap:AudioPerformer = new AudioPerformer(sequence, new AudioDescriptor())
+				var player:AudioPlayer = new AudioPlayer();
+				player.play(ap);
+				
+			}
+
+			protected function clear_clickHandler(event:MouseEvent):void
+			{
+				sound_makers.removeAll();
+			}
+
+
+			protected function playAll_clickHandler(event:MouseEvent):void
+			{
+				playAll()
+			}
+
+		]]>
+	</fx:Script>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.model.AppModel;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import views.audio.SentenceToAudio;
+
+			protected function init():void
+			{
+				AppModel.getInstance().signedInContributor = new Contributer;
+				AppModel.getInstance().signedInContributor.ID = 0;
+				AppModel.getInstance().signedInContributor.user_native_dialect_code = "en";
+				
+			}
+			private function cc():void
+			{
+				add_sentence();
+			}
+
+			[Bindable]public var sound_makers:ArrayCollection = new ArrayCollection;
+			protected function add_sentence():void
+			{
+				var sta:SentenceToAudio = new SentenceToAudio();
+				sta.height = 150;
+				sta.width = 600;
+				sound_makers.addItem(sta);
+			
+			}
+			
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+<s:VGroup width="100%" verticalAlign="middle" horizontalAlign="center">
+	<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+		<s:HGroup width="100%" horizontalAlign="left">
+			<s:Button label="Clear" id="clear" click="clear_clickHandler(event)"/>
+		</s:HGroup>	
+		<s:HGroup width="100%" horizontalAlign="right">
+			<s:Button label="All" id="btn_playAll" click="playAll_clickHandler(event)"/>
+			<s:Button label="Stitch" id="stitch" click="stitch_clickHandler(event)"/>
+		</s:HGroup>	
+	</s:HGroup>	
+	<s:HGroup width="630">
+		<s:Button label="Add" id="btn_add_sentence" click="add_sentence()"/>
+	</s:HGroup>
+	<s:Scroller>
+		
+	<s:DataGroup id="lt_sound_makers" width="630" height="700" dataProvider="{sound_makers}">
+		<s:layout>
+			<s:VerticalLayout>
+				
+			</s:VerticalLayout>
+		</s:layout>
+	</s:DataGroup>
+	</s:Scroller>
+
+    
+</s:VGroup>	
+	
+</s:WindowedApplication>

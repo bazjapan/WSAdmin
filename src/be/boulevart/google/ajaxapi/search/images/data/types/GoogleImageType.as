@@ -1,0 +1,1 @@
+package be.boulevart.google.ajaxapi.search.images.data.types {	/**	 * @author joris	 */	public class GoogleImageType {		public static const FACE : String = "face";		public static const NEWS : String = "news";		public static const PHOTO : String = "photo";		public static const CLIPART : String = "clipart";	}}

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="400" height="300" xmlns:audio="views.audio.*" xmlns:buttons="views.buttons.*">
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+<s:states>
+	<s:State name="diabled"/>
+	<s:State name="recents"/>
+	<s:State name="details"/>
+</s:states>	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.utils.popMessage;
+			
+			import mx.collections.ArrayCollection;
+			
+			public var showAudioTagger:Function;
+			public var updateAudioFunc:Function;
+			public var recently_added:ArrayCollection;
+			[Bindable]
+			public var currently_editing_audio:WSAudio;
+			private var last_state:String;
+			
+			private function cc():void
+			{
+				this.currentState = "recents";
+				last_state = this.currentState;
+				
+			}
+			
+			public function editAudioDetails(wsa:WSAudio,completeCallback:Function = null):void
+			{
+				currently_editing_audio = wsa;
+				last_state = this.currentState;
+				this.currentState = "details";
+				if(completeCallback != null){trace("Be nice if this fired after edit was complete. but not important");completeCallback(wsa)};
+			}
+
+			protected function btn_save_audio_clickHandler(event:MouseEvent):void
+			{
+				if(currently_editing_audio == null)return;
+				
+				updateAudioFunc(currently_editing_audio,
+				function(audio:WSAudio):void
+				{
+					popMessage("Audio Updated",2000,24);
+				});
+				
+			}
+
+		]]>
+	</fx:Script>
+	
+	
+	<audio:RecentlyAddedAudio recently_added="{recently_added}" editAudioDetailsFunc="{editAudioDetails}" includeIn="recents" width="100%" height="100%">
+		
+	</audio:RecentlyAddedAudio>
+	<s:VGroup includeIn="details" width="100%" height="100%">
+		<audio:AudioDetailsForm audio="{currently_editing_audio}" showAudioTagger="{showAudioTagger}" width="100%" height="100%">
+			
+		</audio:AudioDetailsForm>
+		<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+        		<s:HGroup width="100%" horizontalAlign="left">
+        			<buttons:WSIconButton  width="100" id="btn_backToList" label="Back" toolTip="Back to List" icon="{IconLib.ARROW_LEFT_16}" click="{this.currentState = last_state}"/>
+        		</s:HGroup>	
+        		<s:HGroup width="100%" horizontalAlign="right">
+        			<buttons:SaveButton id="btn_save_audio" label="Save" toolTip="Save Audio Details" click="btn_save_audio_clickHandler(event)" />
+        		</s:HGroup>	
+        	</s:HGroup>	
+        
+	</s:VGroup>
+</s:Group>

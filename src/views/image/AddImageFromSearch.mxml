@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%" xmlns:buttons="views.buttons.*" xmlns:image="views.image.*">
+	<s:layout>
+		<s:VerticalLayout paddingLeft="3" paddingRight="3" paddingBottom="3"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.events.ImageEvent;
+			import jp.wordsmart.events.KeywordEvent;
+			import jp.wordsmart.model.KeywordAdminModel;
+			import jp.wordsmart.model.SlideAdderModel;
+			
+			import mx.events.CollectionEvent;
+			import mx.events.CollectionEventKind;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import utils.array.containsObjectWithSameParameterValue;
+			import utils.date.now;
+			
+		
+			
+			public var selectedCallback:Function;//selectedImage
+			
+			
+			[Bindable]public var showAddToTemp:Boolean
+			
+			[Bindable]private var canSave:Boolean;
+			[Bindable]private var canSendToTray:Boolean;
+			[Bindable]private var canAttach:Boolean;
+			[Bindable]public var imageDetails:String = '';
+			
+	
+			
+			protected function cc():void
+			{
+				lt_images.addEventListener("IMAGE_HOVER_EVENT",onIMAGE_HOVER_EVENT);
+				
+				KeywordAdminModel.getInstance().loadedKeywords.addEventListener(CollectionEvent.COLLECTION_CHANGE,onLoadedKeywordsCollectionChange);
+				onLoadedKeywordsCollectionChange();
+				
+			}
+
+			private function onLoadedKeywordsCollectionChange(event:CollectionEvent = null):void
+			{
+				
+				for each (var kw:WSKeyword in KeywordAdminModel.getInstance().loadedKeywords)
+				{	var hit:Boolean = false;
+					for each (var str:String in cc_search.possibleSearchTerms)
+					{
+					if(str == kw.keyword_text){hit = true; break;}
+					}
+					
+					if(!hit)
+					{
+						cc_search.possibleSearchTerms.addItem(kw.keyword_text);
+					}
+				}
+				
+			}
+
+			
+			private function onIMAGE_HOVER_EVENT(event:Event):void
+			{
+				var img:WSImage = ImageSearchRenderer(event.target).image;
+				imageDetails = "Width: "+img.image_w+" Height: "+img.image_h;
+			}
+			
+			protected function btn_view_Image_clickHandler(event:MouseEvent):void
+			{
+				view_image(lt_images.selectedImage);
+			}
+			private function view_image(img:WSImage):void
+			{
+				canAttach = false;
+				canSave = false;
+				canSendToTray = false;
+			currentState = "view";
+			cc_imageViewer.image = img;
+			}
+			
+			protected function btn_attachToKeyword_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+
+			protected function btn_add_to_editor_clickHandler(event:MouseEvent):void
+			{
+				if(!lt_images.selectedImage)return;
+				selectedCallback(lt_images.selectedImage);
+				this.currentState = "list";
+			}
+			private function imageLoadComplete(img:WSImage):void
+			{}
+			private function imageLoadError():void
+			{}
+
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="list"/>
+		<s:State name="view"/>
+	</s:states>
+	<s:VGroup includeIn="list" width="100%" height="100%">
+	<image:ImageSearch id="cc_search" width="100%"/>	
+	<image:ImageList id="lt_images" images="{cc_search.images}" width="100%" height="100%" imageDoubleClickFunc="{view_image}"/>
+	</s:VGroup>
+	<s:VGroup width="100%" height="100%" includeIn="view">
+	
+	<image:WSImageViewer  id="cc_imageViewer" width="640" height="480" imageLoadCompleteFunc="imageLoadComplete" imageLoadErrorFunc="imageLoadError"/>	
+        
+	</s:VGroup>
+	
+
+	
+	<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+   
+ 		<s:HGroup includeIn="list" width="100%" horizontalAlign="left">
+		   <s:VGroup width="100%">
+			   <s:Label text="{imageDetails}"/>
+			   <s:Label text="{cc_search.pageNumber}"/>
+		   </s:VGroup>
+			<mx:VRule height="25"/>
+	   </s:HGroup>	
+	   <s:HGroup width="100%" horizontalAlign="left">
+		   <buttons:WSIconButton includeIn="view" width="24" height="24" icon="{IconLib.ARROW_LEFT_16}" toolTip="Search For Images" id="Search" click="{currentState = 'list'}"/>
+		   <buttons:WSIconButton includeIn="list" width="24" height="24" visible="{lt_images.selectedImage != null}" icon="{IconLib.EYE_16}" toolTip="View Selected Image" id="btn_view_Image" click="btn_view_Image_clickHandler(event)"/>
+	   	<mx:VRule height="25"/>
+	   </s:HGroup>	
+	   <s:HGroup width="100%" horizontalAlign="right">
+		   <mx:VRule height="25"/>
+		   <buttons:WSIconButton icon="{IconLib.ADD_16}" label="Add To Editor" toolTip="Add to Editor" id="btn_add_to_editor" click="btn_add_to_editor_clickHandler(event)" visible="{lt_images.selectedImage != null &amp;&amp; selectedCallback != null}"/>
+	
+	   </s:HGroup>	
+		
+	</s:HGroup>	
+	
+    
+
+</s:Group>

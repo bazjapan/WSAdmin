@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSAudio;
+			[Bindable]
+			private var audio:WSAudio;
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				this.audio = value as WSAudio;
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Image source="{IconLib.AUDIO_64}" toolTip="{audio.audio_orig_url}"/>
+	<s:Label visible="{audio.audio_meta == WordSmartConstants.AUDIO_BAD_FILE}" width="100%" height="100%" verticalAlign="middle" textAlign="center" fontSize="30" color="#FF0000"  fontWeight="bold" alpha="0.5" text="X"/>
+	
+</s:ItemRenderer>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300" xmlns:slide="views.slide.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.json.controllers.WSKeywordController;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			
+			import views.keyword.KeywordHelper;
+			private var _wordSmartImage:WSImage;
+			private var keywordController:WSKeywordController = new WSKeywordController(getServiceBaseURL());
+			[Bindable]private var keywords:ArrayCollection = new ArrayCollection;
+			
+
+			[Bindable]
+			public function get wordSmartImage():WSImage
+			{
+				return _wordSmartImage;
+			}
+
+			public function set wordSmartImage(value:WSImage):void
+			{
+				/* _wordSmartImage = value;
+				keywordController.get_keywords_by_image_id(wordSmartImage.ID, function(evt:ResultEvent):void
+				{
+					keywords.source = new KeywordResultHelper().resultToArray(evt.result as String);
+				}); */
+				
+			}
+
+			protected function saveSlide():void
+			{
+				trace("save added keyword info");
+			}
+			
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%" >
+		<s:HGroup width="100%" horizontalAlign="left">
+			<slide:SlideAdderNavigatorBar 
+				showCreateButton="true" 
+				showListButton="true" />
+		</s:HGroup>	
+		<s:HGroup width="100%" horizontalAlign="right">
+			<slide:SlideAdderButtons wordSmartImage="{wordSmartImage}" 
+									 showEditDetails="{wordSmartImage != null}"
+									 showSaveSlide="{wordSmartImage != null}"
+									 showEditSlide="{wordSmartImage != null}"
+									 showAddToKeyword="{wordSmartImage != null}" 
+									 saveFunc="saveSlide"
+									 />
+		</s:HGroup>	
+	</s:HGroup>	
+
+	<s:Label text="List of keywords attached to"/>
+	<s:Label text="Add to keyword by search or add to selected keyword"/>
+	<s:Label text="Choose keyword to attach to"/>
+	<s:Label text="Allow to load shown keyword"/>
+	<s:List width="100%" height="100%" dataProvider="{keywords}">
+		
+	</s:List>
+</s:Group>

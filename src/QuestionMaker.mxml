@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:quiz="views.quiz.*" creationComplete="cc()" initialize="init()">
+	<s:layout>
+		<s:VerticalLayout horizontalAlign="center"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.model.AppModel;
+			
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			import views.image.WordSmartImageSearch;
+			protected function init():void
+			{
+				AppModel.getInstance().signedInContributor = new Contributer;
+				AppModel.getInstance().signedInContributor.ID = 0;
+				AppModel.getInstance().signedInContributor.user_native_dialect_code = "en";
+			}
+			private function cc():void
+			{
+				this.addEventListener("EVENT_IMAGE_CLICKED",onEVENT_IMAGE_CLICKED);
+				
+				
+				
+				
+			}
+
+			private var sw:WordSmartImageSearch;
+			private function onEVENT_IMAGE_CLICKED(event:Event):void
+			{
+				var qi:QuestionItem = event.target as QuestionItem;
+				if(sw == null)
+				{
+					sw = new WordSmartImageSearch;
+					sw.width = 480;
+					sw.height = 640;
+					sw.addEventListener(CloseEvent.CLOSE, removeMe);
+				}
+				sw.addEventListener("EVENT_IMAGE_CHOSEN", setURL);
+				PopUpManager.addPopUp(sw,this);
+				
+				function setURL(evt:Event):void{
+					qi.image_url = sw.selected_image.image_url;
+					removeMe();
+				}
+				function removeMe(ce:CloseEvent = null):void
+				{
+					sw.removeEventListener("EVENT_IMAGE_CHOSEN",setURL);
+					PopUpManager.removePopUp(sw);
+				}
+			}
+
+			
+		]]>
+	</fx:Script>
+	
+
+		
+	
+	<s:HGroup width="100%" verticalAlign="middle">
+		<mx:HRule width="20"/>
+		<s:Label text="Question"/>
+		<mx:HRule width="100%"/>
+	</s:HGroup>
+	<quiz:QuestionItem >
+		
+	</quiz:QuestionItem>	
+	
+
+	<s:HGroup width="100%" verticalAlign="middle">
+		<mx:HRule width="20"/>
+		<s:Label text="Answers"/>
+		<mx:HRule width="100%"/>
+	</s:HGroup>
+	
+	<s:Scroller width="100%" height="100%">
+		
+	<s:VGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+		
+		<quiz:QuestionItem image_url="{'http://s3.amazonaws.com/wordsmartimages-tests/wss-1-1308796639884.png'}">
+			
+		</quiz:QuestionItem>
+		<quiz:QuestionItem>
+			
+		</quiz:QuestionItem>
+		<quiz:QuestionItem>
+			
+		</quiz:QuestionItem>
+		<quiz:QuestionItem>
+			
+		</quiz:QuestionItem>
+	</s:VGroup>
+	</s:Scroller>
+
+	
+</s:WindowedApplication>

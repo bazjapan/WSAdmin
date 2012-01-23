@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx"  creationComplete="cc()" width="100%" height="100%"  xmlns:buttons="views.buttons.*">
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.pbsmediatech.json.utils.extractResult;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.json.controllers.WSKeywordController;
+			import jp.wordsmart.json.utils.WSKeywordResultHelper;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import ui.titlewindows.AWindowSkin;
+			
+			import utils.object.isEmpty;
+			
+			import views.other.CustomIconButtonSkin;
+
+			private var selectedLanguage:String;
+			private var kwc:WSKeywordController = new WSKeywordController(DomainSettings.API_URL);
+			public var lastLoaded:Array = [];
+			
+			private function cc():void
+			{
+				this.setStyle("skinClass", AWindowSkin);
+				selectedLanguage = AppModel.getInstance().currentBaseLanguage;
+				ti_kwd.addEventListener(KeyboardEvent.KEY_DOWN,onKeyDown);
+				this.addEventListener(FlexEvent.SHOW, onShow);
+				focusInOnSearchTerm();
+				tog_kwd.selected = true;
+			}
+
+			private function onShow(event:FlexEvent):void
+			{
+				focusInOnSearchTerm();
+			}
+			private function focusInOnSearchTerm():void
+			{
+				focusManager.setFocus(ti_kwd);
+			}
+			
+			private function onKeyDown(event:KeyboardEvent):void
+			{
+				if(event.charCode == 13)
+				{
+					btn_load_clickHandler();
+				}
+				
+			}
+			protected function tbtn_loadAll_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+
+
+			protected function dd_languages_changeHandler(event:IndexChangeEvent):void
+			{
+				selectedLanguage = dd_languages.selectedItem["value"];
+			}
+
+
+			protected function btn_load_clickHandler(event:MouseEvent = null):void
+			{
+				var params:Object = new Object();
+				
+				for (var i:int = 0; i < vg_props.numElements; i++)
+				{
+					if(vg_props.getElementAt(i) is HGroup)
+					{
+						if(HGroup(vg_props.getElementAt(i)).getElementAt(0)['selected'])
+						{
+							var value:String = HGroup(vg_props.getElementAt(i)).getElementAt(1)['text'];
+							if(value != '')
+							{
+							params[HGroup(vg_props.getElementAt(i)).getElementAt(1)['styleName']] = value;
+							}
+						}
+						
+					}
+				}
+				if(isEmpty(params))return;
+				var to_send:Object = new Object;
+				to_send.kvps = JSON.encode(params);
+				to_send.lang = selectedLanguage;
+				to_send.strict = togg_strict.selected;
+				kwc.find_keywords_where_props_equal_search_term(to_send, function(evt:ResultEvent):void
+				{
+					trace(evt.result.toString());
+					lastLoaded = new WSKeywordResultHelper().resultToArray(extractResult(evt));
+					dispatchEvent(new Event("KEYWORDS_LOAD_COMPLETE",true));
+				});
+				
+				
+			}
+			
+
+
+			protected function btn_clear_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("CLEAR_KEYWORD_LIST", true));
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:VGroup width="100%" height="100%" paddingRight="3" paddingLeft="3" paddingTop="5">
+		<s:HGroup width="100%" height="24">
+			<s:DropDownList width="204" dataProvider="{new ArrayCollection(AppModel.getInstance().languages)}" prompt="{languageCodeToText(AppModel.getInstance().currentBaseLanguage)}" id="dd_languages" change="dd_languages_changeHandler(event)"/>
+			<s:HGroup width="100%" horizontalAlign="right">
+			<s:ToggleButton id="togg_strict" selected="false" label="{togg_strict.selected?'Match = Exact':'Match = Loose'}" toolTip="Toggle exact"/>
+			</s:HGroup>
+		</s:HGroup>
+		<s:VGroup verticalAlign="middle"  width="100%" height="109" id="vg_props" gap="10">
+			
+			<s:HGroup width="100%">
+				<s:ButtonBarButton id="tog_kwd" label="Text" toolTip="Search by keyword text"  width="75" height="100%" data="{{'label':'Text','icon':IconLib.TEXT_16}}" skinClass="{CustomIconButtonSkin}">
+				</s:ButtonBarButton>
+				<s:TextInput styleName="keyword_text" enabled="{tog_kwd.selected}" id="ti_kwd" width="100%"/>
+			<mx:Image click="{ti_kwd.text = ''}" buttonMode="true" source="{IconLib.CANCEL_18}" visible="{ti_kwd.text.length &gt; 0}" toolTip="Clear Search" width="16" height="16" />
+			</s:HGroup>
+
+			<s:HGroup width="100%">
+				<s:ButtonBarButton id="tog_keyword_tags"  toolTip="Search by keyword tags" width="75" height="100%" data="{{'label':'Tags','icon':IconLib.TAG_16}}" skinClass="{CustomIconButtonSkin}">
+				</s:ButtonBarButton>
+				<s:TextInput styleName="keyword_tags" enabled="{tog_keyword_tags.selected}" id="ti_keyword_tags" width="100%"/>
+			<mx:Image click="{ti_keyword_tags.text = ''}" buttonMode="true" source="{IconLib.CANCEL_18}" visible="{ti_keyword_tags.text.length &gt; 0}" toolTip="Clear Search" width="16" height="16" />
+			</s:HGroup>
+			
+			<s:HGroup width="100%">
+				<s:ButtonBarButton id="tog_keyword_type"  toolTip="Search by keyword type" width="75" height="100%" data="{{'label':'Type','icon':IconLib.TYPE_16}}" skinClass="{CustomIconButtonSkin}">
+				</s:ButtonBarButton>
+				<s:TextInput styleName="keyword_type" enabled="{tog_keyword_type.selected}" id="ti_keyword_type" width="100%"/>
+			<mx:Image click="{ti_keyword_type.text = ''}" buttonMode="true" source="{IconLib.CANCEL_18}" visible="{ti_keyword_type.text.length &gt; 0}" toolTip="Clear Search" width="16" height="16" />
+			</s:HGroup>
+			
+		</s:VGroup>
+		
+		<s:HGroup width="100%" paddingRight="3" paddingLeft="3">
+		
+		<s:HGroup width="100%" height="40"  horizontalAlign="left" verticalAlign="middle">
+			<buttons:WSIconButton icon="{IconLib.CLEAR_LOADED_KEYWORDS_16}"  width="150" id="btn_clear" label="Clear List" toolTip="Clear List" click="btn_clear_clickHandler(event)"/>
+		</s:HGroup>
+			<s:HGroup width="100%">
+				<s:Label id="lb_status"/>
+			</s:HGroup>
+		<s:HGroup width="100%" height="40"  horizontalAlign="right" verticalAlign="middle">
+			<buttons:WSIconButton icon="{IconLib.LOAD_KEYWORDS_16}"  width="150" id="btn_load" toolTip="Load" label="Load"  click="btn_load_clickHandler(event)"/>
+		</s:HGroup>
+			
+		</s:HGroup>
+	</s:VGroup>
+
+		
+	</s:Group>

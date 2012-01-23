@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="450" height="60" xmlns:buttons="views.buttons.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center" paddingLeft="3" paddingRight="3" paddingTop="3" paddingBottom="3">
+			
+		</s:VerticalLayout>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			
+			import utils.url.openInBrowser;
+			[Bindable]
+			public var url:String;
+
+			protected function btn_copy_clickHandler(event:MouseEvent):void
+			{
+				System.setClipboard(lb_url.text);
+			}
+
+
+			protected function btn_open_clickHandler(event:MouseEvent):void
+			{
+				openInBrowser(lb_url.text);
+			}
+
+		]]>
+	</fx:Script>
+<s:HGroup width="100%" verticalAlign="middle">
+	<s:Label id="lb_url" text="{url}" width="100%"/>
+	<s:VGroup >
+	<buttons:WSIconButton width="100" label="Copy" icon="{IconLib.COPY_16}" toolTip="Copy to Clipboard" id="btn_copy" click="btn_copy_clickHandler(event)"/>
+	<buttons:WSIconButton width="100" label="Open" icon="{IconLib.ROUND_AND_UP_16}" toolTip="Open In Browser" id="btn_open" click="btn_open_clickHandler(event)"/>
+	</s:VGroup>
+</s:HGroup>	
+	
+</s:Group>

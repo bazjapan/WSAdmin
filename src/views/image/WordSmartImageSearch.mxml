@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" toolTip="Double Click to use Image" width="100%" height="100%" xmlns:image="views.image.*" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSImage;
+			public var selected_image:WSImage;
+			protected function select_clickHandler(event:MouseEvent = null):void
+			{
+				selected_image = lt_images.selectedImage;
+				dispatchEvent(new Event("EVENT_IMAGE_CHOSEN"));
+			}
+		]]>
+	</fx:Script>
+
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.json.utils.WSImageResultHelper;
+			import jp.wordsmart.json.controllers.WSImageController;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			import jp.wordsmart.WordSmartConstants;
+
+
+			
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			[Bindable]private var images:ArrayCollection = new ArrayCollection;
+			private var search_cursor_position:int = 0;
+			private var default_num_results:int = 9;
+			[Bindable]private var can_prev_search:Boolean;
+			[Bindable]private var can_next_search:Boolean;
+			
+			
+			protected function search_clickHandler(event:MouseEvent):void
+			{
+				can_prev_search = false;
+				can_next_search = false;
+				search_cursor_position = 0;
+				doSearch(search_cursor_position);
+			}
+			
+			private function doSearch(position:int):void
+			{
+				var search_term_to_send:String = search_term.text;
+				var params:Object = new Object;
+				params.search_term = position;
+				params.start_index = default_num_results;
+				new WSImageController(getServiceBaseURL()).search_image_title_content_and_tags(params,
+					function(evt:ResultEvent):void
+					{
+						try
+						{
+							var returnedImages:Array = new WSImageResultHelper().resultToArray(evt.result as String);
+							images.source = returnedImages;
+							search_cursor_position = search_cursor_position+images.length;
+							updatePageing()
+						}
+						catch(err:Error)
+						{
+							trace(err.toString())
+						}
+						
+					});
+			}
+				
+			private function updatePageing():void
+			{
+			can_next_search = images.length==default_num_results;
+			can_prev_search = search_cursor_position>default_num_results;
+			}
+			
+
+			protected function prev_clickHandler(event:MouseEvent):void
+			{
+				 search_cursor_position = search_cursor_position-(images.length+default_num_results)
+				doSearch(search_cursor_position);
+			}
+
+
+			protected function next_clickHandler(event:MouseEvent):void
+			{
+				doSearch(search_cursor_position);
+			}
+			
+			
+
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	<s:HGroup width="100%">
+		<s:TextInput id="search_term" width="100%"/>
+		<s:Button id="search" label="search" enabled="{search_term.text.length &gt; 0}" click="search_clickHandler(event)"/>
+		<s:Button id="prev" label="P" enabled="{can_prev_search &amp;&amp; search.enabled}" click="prev_clickHandler(event)"/>
+		<s:Button id="next" label="N" enabled="{can_next_search &amp;&amp; search.enabled }" click="next_clickHandler(event)"/>
+		
+	</s:HGroup>
+	
+	<image:ImageList imageDoubleClickFunc="{function(img:WSImage):void{select_clickHandler();}}" id="lt_images" images="{images}" width="100%" height="100%">
+		
+	</image:ImageList>
+<!--	<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+    		<s:HGroup width="100%" horizontalAlign="left">
+    			
+    		</s:HGroup>	
+    		<s:HGroup width="100%" horizontalAlign="right">
+    			<s:Button label="Select" id="select" click="select_clickHandler(event)" enabled="{lt_images.selectedImage != null}"/>
+    		</s:HGroup>	
+    	</s:HGroup>	-->
+    
+</s:TitleWindow>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.AudioRequest;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.AudioEvent;
+			import jp.wordsmart.events.CBEvent;
+
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.dialectCodeToDialectObject;
+			
+			[Bindable]
+			private var request:AudioRequest;
+			//set up
+			private var aggAdded:Boolean;
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				request = value as AudioRequest;
+				
+			}
+		
+			// --//set up
+			
+			
+			//--events
+			protected function btn_mark_done_clickHandler(event:MouseEvent):void
+			{
+				
+				data.audio_request_fulfilled_by = AppModel.getInstance().signedInContributor.ID;
+				dispatchEvent(new CBEvent("MARK_AUDIO_REQUEST_FULLFILLED",
+				[
+				function():void{
+					var lab:Label = new Label;
+					lab.text = "Request completed by :"+AppModel.getInstance().signedInContributor.user_login;
+					hg_middle1.addElement(lab);
+					lab.setStyle("fontWeight","bold");
+					hg_controls.visible = false;	
+				}
+				],data,true));
+			}
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new CBEvent("REMOVE_AUDIO_REQUEST",[function():void
+				{
+					var lab:Label = new Label;
+					lab.text = "Request removed by :"+AppModel.getInstance().signedInContributor.user_login;
+					hg_middle1.addElement(lab);
+					lab.setStyle("fontWeight","bold");
+					hg_controls.visible = false;
+					
+				}],data,true));
+				
+			}
+
+			protected function btn_edit_audio_request_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new CBEvent("EDIT_AUDIO_REQUEST",[function():void
+				{
+					trace("EDIT_AUDIO_REQUEST - callback called in renderer");
+					
+				}],data,true));
+			}
+			//--//events
+
+			protected function btn_record_clickHandler(event:MouseEvent):void
+			{
+				var da:WSAudio = getDefaultAudio();
+				da.audio_language = request.audio_request_language;
+				da.audio_transcript = request.audio_request_transcript;
+				da.audio_mood = request.audio_request_mood;
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO,da,true));
+			}
+
+		]]>
+	</fx:Script>
+	<s:BorderContainer width="100%" height="91">
+		
+	
+	<s:HGroup width="100%" paddingBottom="10" paddingTop="10" paddingLeft="10" paddingRight="10">
+		<s:VGroup id="labels" width="100%" gap="15">
+			<s:HGroup>
+				<s:Label text="{'Requested by: '+request.audio_requester_name}" fontWeight="bold"/>
+				<s:Label text="{'Requested date: '+request.audio_request_date_added}" fontWeight="bold"/>
+			</s:HGroup>
+			<s:HGroup id="hg_middle1">
+				<s:Label text="{'Mood: '+request.audio_request_mood}" fontWeight="bold"/>
+			</s:HGroup>
+			<s:HGroup id="hg_final" gap="5">
+				<s:Label text="{'Dialect: '+dialectCodeToDialectObject(request.audio_request_dialect)['dialect_label']}" fontWeight="bold"/>
+				<s:Label text="{'Gender: '+request.audio_request_gender}" includeInLayout="{request.audio_request_gender != 'X'}" fontWeight="bold"/>
+				<s:Label text="{'Age: '+request.audio_request_recorder_age}" includeInLayout="{request.audio_request_recorder_age != 'X'}" fontWeight="bold"/>
+			</s:HGroup>
+		</s:VGroup>
+		<s:HGroup paddingRight="3" width="100%" horizontalAlign="right" id="hg_controls">
+			<s:VGroup>
+			<mx:Image buttonMode="true" source="{IconLib.MICROPHONE_16}" width="16" height="16" toolTip="Record Request" id="btn_record" click="btn_record_clickHandler(event)"/>
+			<mx:Image buttonMode="true" source="{IconLib.MARK_AS_DONE_16}" width="16" height="16" toolTip="Mark Request as Done" id="btn_mark_done" click="btn_mark_done_clickHandler(event)"/>
+			</s:VGroup>
+			<s:VGroup>
+			<mx:Image  buttonMode="true" width="16" height="16" source="{IconLib.DOC_EDIT_16}" toolTip="Edit" id="btn_edit_audio_request" click="btn_edit_audio_request_clickHandler(event)"/>
+			<mx:Image buttonMode="true" source="{IconLib.DELETE_16}" width="16" height="16" toolTip="Delete Request"  visible="{request.audio_requester_name == AppModel.getInstance().signedInContributor.user_login}" id="btn_remove" click="btn_remove_clickHandler(event)"/>
+			</s:VGroup>
+		</s:HGroup> 
+	</s:HGroup>
+	</s:BorderContainer>
+	
+	
+</s:ItemRenderer>

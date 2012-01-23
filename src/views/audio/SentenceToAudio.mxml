@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:language="views.language.*" creationComplete="cc()" xmlns:buttons="views.buttons.*" xmlns:audio="views.audio.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.audio.providers.AudioProvider;
+			import jp.wordsmart.audio.providers.GoogleDictionaryAudio;
+			import jp.wordsmart.audio.providers.GoogleTranslateAudio;
+			import jp.wordsmart.audio.providers.NaturalVoiceByNaturalSoft;
+			import jp.wordsmart.audio.providers.WordSmartAudioProvider;
+			import jp.wordsmart.dto.AudioReader;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.utils.download.downloadToFileFromURL;
+			import jp.wordsmart.utils.language.Dialect;
+			import jp.wordsmart.utils.language.dialectCodeToDialectObject;
+			import jp.wordsmart.utils.popMessage;
+			import jp.wordsmart.utils.upload.uploadAudioToWordSmart;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.IndexChangedEvent;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			import utils.array.merge;
+			import utils.date.now;
+			import utils.removeDuplicateObjects;
+			import utils.string.replace;
+			import utils.timestamp.dateToTimeStampUTC;
+			
+			
+			
+			public var registerFunc:Function;
+			public var showTagger:Function;
+			public var showProgressFunc:Function;
+			public var hideProgressFunc:Function;
+			
+			
+			
+			
+			private var providers:Array = [new NaturalVoiceByNaturalSoft, new GoogleTranslateAudio, new GoogleDictionaryAudio, new WordSmartAudioProvider];
+			[Bindable]
+			private var speeds:ArrayCollection;
+			
+			[Bindable]
+			public var selected_provider:AudioProvider;
+			public var selected_dialect:Dialect;//dialect object
+			public var selected_reader:AudioReader;
+			
+			//text
+			private var current_textField:TextArea;
+			[Bindable]
+			private var currentCharsUsed:int;
+			[Bindable]
+			private var allowedChars:int;
+			
+			
+			//what can do
+			[Bindable]
+			public var canQueue:Boolean;//all fields are correct
+			[Bindable]
+			public var canDownload:Boolean;//url for speech has been returned form provider
+			[Bindable]
+			private var canAdd:Boolean;
+			
+			private var formatters:Array = ['[PAUSE]','[STOP]'];
+			private var formatterValuess:Array = [',','... '];
+			
+			private var audioParamsChanged:Boolean;
+			
+			[Bindable]
+			public var audio:WSAudio;
+			
+			
+			private function cc():void
+			{
+				
+				current_textField = ta_transcript;
+				if(!audio)
+				{
+					audio = getDefaultAudio();
+				}
+				if(audio != null)
+				{
+					setDialect(audio.audio_language);
+				}
+				audioParamsChanged = true;//let the user download audio for initial text set
+				update_ui();
+				
+				audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_SUCCESS_EVENT,onSOUND_LOADED_EVENT);
+				audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_FAIL_EVENT, onAUDIO_LOADED_FAIL_EVENT);
+				audioPlayer.addEventListener(MiniAudioPlayer2.EVENT_DO_DOWNLOAD, onEVENT_DO_DOWNLOAD);
+			}
+			
+			
+			private function onAUDIO_LOADED_FAIL_EVENT(event:Event):void
+			{
+				trace("Load Error "+audioPlayer.lastLoadedAudioLength)
+				canAdd = false;
+				canDownload = false;
+				Alert.show("Unable to Load Audio, Please try another setting", "Audio Load Error");
+			}
+			private function onSOUND_LOADED_EVENT(event:Event):void
+			{
+				canAdd = true;
+				canDownload = true;
+				audio.audio_total_time = audioPlayer.lastLoadedAudioLength;
+			}
+			
+			//ui stuff-----------------------------	
+			protected function langChanger_changeHandler(event:IndexChangeEvent):void
+			{
+				audioParamsChanged = true;
+				audio.audio_language = langChanger.getSelectedLangCode();
+				setDialect(audio.audio_language);
+				
+			}
+			private function setDialect(lang_code:String):void
+			{
+				//populate dropdown with dialect objects
+				dd_available_dialects_for_language.dataProvider = new ArrayCollection(getAvailableDialectsForLanguage(audio.audio_language));
+				if(dd_available_dialects_for_language.dataProvider.length>0)
+				{
+					dd_available_dialects_for_language.selectedIndex = 0;
+					selected_dialect = dd_available_dialects_for_language.selectedItem;
+					dd_available_dialects_for_language.prompt = selected_dialect["dialect_label"];
+					setProviders(selected_dialect["dialect_code"])
+				}
+				else
+				{
+					dd_available_dialects_for_language.prompt = "No dialects available for chosen language";
+				}
+			}
+			private function getAvailableDialectsForLanguage(lang_code:String):Array
+			{
+				var dialectArrays:Array = [];
+				for each (var provider:AudioProvider in providers)
+				{
+					dialectArrays.push(provider.getDialectsHandled());
+				}
+				var merged:Array = merge(dialectArrays);
+				var matchingCodesForLang:Array = [];
+				for each (var dialect_code:String in merged)
+				{
+					var dialectObj:Object = dialectCodeToDialectObject(dialect_code);
+					if(dialectObj["language_code"] == lang_code)
+					{
+						matchingCodesForLang.push(dialectObj);
+					}
+				}
+				return removeDuplicateObjects(matchingCodesForLang,["dialect_code"]);
+			}
+			
+			private function setProviders(selected_dialect:String):void
+			{
+				dd_providers_offering_selected_dialect.dataProvider = new ArrayCollection(getProvidersOfferingDialect(selected_dialect));
+				if(dd_providers_offering_selected_dialect.dataProvider.length>0)
+				{
+					dd_providers_offering_selected_dialect.selectedIndex = 0;
+					selected_provider = dd_providers_offering_selected_dialect.selectedItem;
+					dd_providers_offering_selected_dialect.prompt = selected_provider.label;
+					ta_special.maxChars = selected_provider.serviceMaxChars;
+					ta_transcript.maxChars = selected_provider.serviceMaxChars;
+					allowedChars = selected_provider.serviceMaxChars;
+					setReaders(selected_dialect,selected_provider);
+					setSpeeds();
+				}
+			}
+			private function getProvidersOfferingDialect(dialect_code:String):Array
+			{
+				var qualified_providers:Array = [];
+				for each (var provider:AudioProvider in providers)
+				{
+					var provider_handled_dialects:Array = provider.getDialectsHandled();
+					for each (var provider_dialect_code:String in provider_handled_dialects)
+					{
+						if(provider_dialect_code == dialect_code)
+						{
+							qualified_providers.push(provider);
+							break;
+						}
+					}
+				}
+				return qualified_providers;
+			}
+			
+			protected function dd_available_dialects_for_language_changeHandler(event:IndexChangeEvent):void
+			{
+				audioParamsChanged = true;
+				selected_dialect = dd_available_dialects_for_language.selectedItem;
+				setProviders(selected_dialect["dialect_code"]);
+			}
+			private function setReaders(dialect_code:String, provider:AudioProvider):void
+			{
+				dd_available_reader_for_provider_and_dialect.dataProvider = new ArrayCollection(getQualifiedReadersForProvider(dialect_code,provider));
+				if(dd_available_reader_for_provider_and_dialect.dataProvider.length>0)
+				{
+					dd_available_reader_for_provider_and_dialect.selectedIndex = 0;
+					selected_reader = dd_available_reader_for_provider_and_dialect.selectedItem;
+					dd_available_reader_for_provider_and_dialect.prompt = selected_reader.label;
+				}
+				else
+				{
+					selected_reader = null;
+				}
+				update_ui();
+				
+			}
+			private function setSpeeds():void
+			{
+				speeds = new ArrayCollection(selected_provider.speeds);
+				dd_speed.selectedItem = selected_provider.default_speed;
+			}
+			private function getQualifiedReadersForProvider(dialect_code:String, provider:AudioProvider):Array
+			{
+				var readers:Array = [];
+				for each (var reader:AudioReader in provider.available_readers)
+				{
+					if(reader.dialect_code == dialect_code)
+					{
+						readers.push(reader);
+					}
+				}
+				return readers;
+			}
+			protected function dd_providers_offering_selected_dialect_changeHandler(event:IndexChangeEvent):void
+			{
+				audioParamsChanged = true;
+				selected_provider = dd_providers_offering_selected_dialect.selectedItem;
+				setReaders(selected_dialect.dialect_code, selected_provider);
+				setSpeeds();
+			}
+			protected function dd_available_reader_for_provider_and_dialect_changeHandler(event:IndexChangeEvent):void
+			{
+				selected_reader = dd_available_reader_for_provider_and_dialect.selectedItem;
+				audioParamsChanged = true;
+				update_ui();
+			}
+			private function update_ui():void
+			{
+				canQueue = selected_reader != null &&audioParamsChanged && stripFormatters(current_textField.text).length>0;
+				canAdd = false;
+				canDownload = false;
+				if(vs_textAreas.selectedIndex == 0)
+				{
+					currentCharsUsed = ta_transcript.text.length;
+				}
+				else
+				{
+					currentCharsUsed = stripFormatters(ta_special.text).length;
+				}
+			}
+			
+			protected function btn_request_audio_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+			protected function vs_textAreas_changeHandler(event:IndexChangedEvent):void
+			{
+				if(event.newIndex == 0)
+				{
+					current_textField = ta_transcript;
+				}
+				else
+				{
+					current_textField = ta_special;
+				}
+				hg_pronounciationHelpers.visible = vs_textAreas.selectedIndex == 1;
+				hg_pronounciationHelpers.includeInLayout = vs_textAreas.selectedIndex == 1;
+				update_ui();
+			}
+			protected function queueAudio(event:MouseEvent):void
+			{
+				canQueue = false;
+				audioPlayer.disable("Loading Audio");
+				//prepare text to send
+				var formattersConverted:String = current_textField.text;
+				if(vs_textAreas.selectedIndex == 1){formattersConverted = convertFormatters(current_textField.text)};
+				//set speed
+				var speed:String = selected_provider.default_speed;
+				if(dd_speed.selectedItem){speed = dd_speed.selectedItem;};
+				selected_provider.getURL(formattersConverted,"",selected_reader, speed, "",function(address:String):void
+				{
+					audioParamsChanged = false;
+					audioPlayer.queueAudio(address,0,false);
+					canDownload = true;
+					canAdd = true;
+					
+				},function(err:String):void
+				{
+					audioPlayer.disable(err);
+					canDownload = false;
+					canAdd = false;
+				},function(status:String):void
+				{
+					audioPlayer.disable(status);	
+				});
+			}
+			
+			
+			protected function btn_copy_clickHandler(event:MouseEvent):void
+			{
+				if(vs_textAreas.selectedIndex == 0)
+				{
+					ta_transcript.text = stripFormatters(ta_special.text);
+					audioParamsChanged = true;
+				}
+				else
+				{
+					ta_special.text = ta_transcript.text;
+					audioParamsChanged = true;
+				}
+				update_ui();
+			}
+			//formatters
+			private function applyFormatter(formatter:String):void
+			{
+				ta_special.insertText(formatter);
+				update_ui();
+			}
+			private function stripFormatters(textWithFormatters:String):String
+			{
+				var textToReturn:String = textWithFormatters;
+				for (var i:int = 0; i < formatters.length; i++)
+				{
+					textToReturn = replace(textToReturn,formatters[i],'');
+					
+				}
+				return textToReturn;
+			}
+			private function convertFormatters(textWithFormatters:String):String
+			{
+				var textToReturn:String = textWithFormatters;
+				for (var i:int = 0; i < formatters.length; i++)
+				{
+					textToReturn = replace(textToReturn,formatters[i],formatterValuess[i]);
+				}
+				return textToReturn;
+			}
+			
+			
+			protected function ta_special_changeHandler(event:TextOperationEvent):void
+			{
+				audioParamsChanged = true;
+				update_ui();
+				
+			}
+			protected function ta_transcript_changeHandler(event:TextOperationEvent):void
+			{
+				audioParamsChanged = true;
+				update_ui();
+				
+			}
+			
+			protected function btn_decreaseTextSize_clickHandler(event:MouseEvent):void
+			{
+				var currentSize:int = current_textField.getStyle("fontSize");
+				var newSize:int = currentSize-2;
+				if(newSize>9)
+				{
+					current_textField.setStyle("fontSize", newSize);
+				}
+			}
+			
+			
+			protected function btn_increaseTextSize_clickHandler(event:MouseEvent):void
+			{
+				var currentSize:int = current_textField.getStyle("fontSize");
+				var newSize:int = currentSize+2;
+				if(newSize<72)
+				{
+					current_textField.setStyle("fontSize", newSize);
+				}
+			}
+			protected function dd_speed_changeHandler(event:IndexChangeEvent):void
+			{
+				audioParamsChanged = true;
+				update_ui();
+			}
+		
+			protected function btn_clearTranscript_clickHandler(event:MouseEvent):void
+			{
+				audio.audio_transcript = "";
+				ta_special.text = audio.audio_transcript;
+				ta_transcript.text = audio.audio_transcript;
+				update_ui();
+			}
+			
+			
+			private function onEVENT_DO_DOWNLOAD(event:Event):void
+			{
+				var type:String = "mp3";
+				downloadToFileFromURL(audioPlayer.audioURL,
+					function(bytes:ByteArray):void
+					{
+						if(hideProgressFunc != null)
+						{
+						hideProgressFunc();
+						}
+						var fr:FileReference = new FileReference();
+						fr.save(bytes, "ws-audio-"+now().getTime().toString()+"."+type.toLowerCase());
+						
+					},
+					function(perc:Number):void
+					{
+						if(showProgressFunc != null)
+						{
+						showProgressFunc("Processing File",perc);
+						}
+					},
+					function():void
+					{
+						if(hideProgressFunc != null)
+						{
+						hideProgressFunc();
+						}
+						Alert.show("Unable to Download Audio", "Upload Error");
+						
+					});
+			}
+			
+			
+			public function addToRemote():void
+			{
+				//fill ya boots
+				downloadToFileFromURL(audioPlayer.audioURL,
+					function(bytes:ByteArray):void
+					{
+						hideProgressFunc();
+						uploadAudioToWordSmart(bytes,
+							function(uploadURL:String):void
+							{
+								//prepare audio
+								audio.audio_orig_url = audioPlayer.audioURL;
+								audio.audio_size = bytes.length;
+								audio.audio_location = uploadURL;
+								audio.audio_isLocal = 1;
+								audio.audio_mime_type = "audio/mpeg";
+
+								audio.audio_meta = JSON.encode({reader_label:selected_reader.label});
+								audio.audio_total_time = audioPlayer.lastLoadedAudioLength;
+								audio.audio_language = langChanger.language;
+								audio.audio_rec_gen = selected_reader.reader_gender;
+								audio.audio_rec_age = selected_reader.reader_age;
+								audio.audio_rec_dia = selected_reader.dialect_code;
+								audio.audio_transcript = ta_transcript.text;
+								audio.audio_copyright = selected_provider.copyright;
+								audio.audio_origin = selected_provider.label;
+								audio.audio_speed = dd_speed.selectedItem as String;
+								
+								registerFunc(audio,function(audioWithID:WSAudio):void
+								{
+									canAdd = false;
+									hideProgressFunc();
+									doRegisterComplete(audio);
+								});
+							},
+							function(perc:Number):void
+							{
+								showProgressFunc("Processing File",perc);
+							},
+							function():void
+							{
+								Alert.show("Unable to Upload Audio", "Upload Error");
+							});
+					},
+					function(perc:Number):void
+					{
+						showProgressFunc("Processing File",perc);
+					},
+					function():void
+					{
+						hideProgressFunc();
+						Alert.show("Unable to Download Audio", "Upload Error");
+					});
+				
+			}
+			
+			private function doRegisterComplete(audio:WSAudio):void
+			{
+				popMessage("Audio Added",2000,24,function():void
+				{
+					trace("popmessage closed");
+					
+				}
+				)
+			}
+			
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%" verticalAlign="middle" paddingLeft="3">
+		<s:DropDownList width="150" toolTip="Select Text to Speech Provider"  id="dd_providers_offering_selected_dialect" labelField="label" change="dd_providers_offering_selected_dialect_changeHandler(event)"/>
+		<language:LanguageFlag toolTip="{langChanger.visible?'Hide Languages':'Show Languages'}" languageCode="{audio.audio_language}" buttonMode="true" useHandCursor="true" id="langFlag" click="{langChanger.includeInLayout = !langChanger.includeInLayout; langChanger.visible = !langChanger.visible}"/>
+		<language:LanguageDropDown toolTip="Transcript Language"  includeInLayout="false" visible="false" id="langChanger" language="{audio.audio_language}" change="langChanger_changeHandler(event)"/>
+		<s:DropDownList toolTip="Select Available Dialect" id="dd_available_dialects_for_language" labelField="dialect_label" change="dd_available_dialects_for_language_changeHandler(event)"/>
+		
+		<s:DropDownList toolTip="Select Available Voice" width="100" id="dd_available_reader_for_provider_and_dialect" labelField="label" change="dd_available_reader_for_provider_and_dialect_changeHandler(event)"/>
+		<s:DropDownList toolTip="Select Audio Speed" width="50" id="dd_speed" dataProvider="{speeds}" includeInLayout="{speeds.length &gt; 1}" visible="{speeds.length &gt; 1}" change="dd_speed_changeHandler(event)"/>
+		<buttons:WSIconButton width="100" id="btn_getAudio" visible="{!selected_provider.accepts_audio_requests &amp;&amp; canQueue}" includeInLayout="{!selected_provider.accepts_audio_requests &amp;&amp; canQueue}" enabled="{canQueue}"  icon="{IconLib.TARGET_16}" toolTip="Queue Audio For Selected Settings" label="Queue Audio" click="queueAudio(event)"/>
+		<buttons:WSIconButton width="120" icon="{IconLib.HAND_16}" label="Request Audio" id="btn_request_audio" click="btn_request_audio_clickHandler(event)" visible="{selected_provider.accepts_audio_requests}" includeInLayout="{selected_provider.accepts_audio_requests}"/>
+	</s:HGroup>
+	<s:HGroup width="100%"  verticalAlign="middle">
+		<audio:MiniAudioPlayer2 id="audioPlayer" useStealthyRequests="true" allowDownload="{canDownload}" visible="{!selected_provider.accepts_audio_requests}" includeInLayout="{!selected_provider.accepts_audio_requests}"/>
+		<s:Label id="lb_currentCharNum" text="{'Characters used: '+currentCharsUsed+' of '+allowedChars+'.'}"/>
+	</s:HGroup>
+	<s:HGroup width="100%" verticalAlign="middle">
+		<mx:TabBar dataProvider="{vs_textAreas}"/>	
+		<s:HGroup verticalAlign="middle" height="100%" visible="false" includeInLayout="false" id="hg_pronounciationHelpers">
+			<s:Button label="{formatters[0]}" click="applyFormatter(formatters[0])" toolTip="Insert Pause"/>
+			<s:Button label="{formatters[1]}" click="applyFormatter(formatters[1])" toolTip="Insert Stop"/>
+		</s:HGroup>
+		<s:HGroup id="textControls" verticalAlign="middle" paddingLeft="5" height="100%">
+			<mx:Image buttonMode="true" toolTip="{'Decrease text size'}" source="{IconLib.MINUS_16}" width="16" height="16"   id="btn_decreaseTextSize" click="btn_decreaseTextSize_clickHandler(event)"/>
+			<mx:Image buttonMode="true" toolTip="{'Increase text size'}" source="{IconLib.ADD_16}" width="16" height="16"  id="btn_increaseTextSize" click="btn_increaseTextSize_clickHandler(event)"/>
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right" paddingRight="3">
+			<mx:Image buttonMode="true" toolTip="{vs_textAreas.selectedIndex == 0?'Copy Tuned Text':'Copy Transcript Text'}" source="{IconLib.COPY_16}" width="16" height="16" id="btn_copy" click="btn_copy_clickHandler(event)"/>
+			<mx:Image buttonMode="true" toolTip="{'Clear All Text'}" source="{IconLib.DELETE_16}" width="16" height="16"   id="btn_clearTranscript" click="btn_clearTranscript_clickHandler(event)"/>
+		</s:HGroup>
+	</s:HGroup>
+	
+	<mx:ViewStack creationPolicy="all" width="100%" height="100%" id="vs_textAreas" change="vs_textAreas_changeHandler(event)">
+		<s:NavigatorContent width="100%" height="100%" label="Transcript">
+			
+			<s:TextArea text="{audio.audio_transcript}" id="ta_transcript" width="100%" height="100%" change="ta_transcript_changeHandler(event)">
+				
+			</s:TextArea>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Tune">
+			
+			
+			
+			<s:TextArea text="{audio.audio_transcript}" id="ta_special" width="100%" height="100%" change="ta_special_changeHandler(event)">
+				
+			</s:TextArea>
+		</s:NavigatorContent>
+	</mx:ViewStack>
+	
+	
+
+	
+</s:Group>

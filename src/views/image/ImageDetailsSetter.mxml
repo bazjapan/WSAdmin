@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:keyword="views.keyword.*" xmlns:buttons="views.buttons.*" xmlns:image="views.image.*">
+	<s:layout>
+		<s:VerticalLayout paddingRight="3" paddingLeft="3" paddingTop="5" paddingBottom="10"/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.events.ImageEvent;
+			
+			import spark.events.TextOperationEvent;
+			
+			
+			protected function btn_clearAll_clickHandler(event:MouseEvent):void
+			{
+			image.content = null;
+			image.copyright = null;
+			image.image_tags = null;
+			tag_editor.image_tags.source = [];
+			}
+			
+			
+			protected function btn_apply_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new ImageEvent(ImageEvent.APPLY_VALUES_TO_IMAGES, image, true));
+			}
+			
+			
+			
+			
+
+			protected function ta_content_changeHandler(event:TextOperationEvent):void
+			{
+				image.content = ta_content.text;
+			}
+
+
+			protected function ta_copyright_changeHandler(event:TextOperationEvent):void
+			{
+				image.copyright = ta_copyright.text;
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.dto.WSKeyword;
+			
+			[Bindable]
+			private var image:WSImage = new WSImage;
+		]]>
+	</fx:Script>
+	<s:Label text="Content"/>
+	<s:TextArea width="100%" height="120" id="ta_content" text="{image.content}" change="ta_content_changeHandler(event)"/>
+	<s:Label text="Tags"/>
+	<image:ImageTagEditor id="tag_editor" width="100%" height="100%" image="{image}">
+		
+	</image:ImageTagEditor>
+	<s:Label text="Copyright Info"/>
+	<s:TextArea width="100%" height="47" id="ta_copyright" text="{image.copyright}" maxChars="100" change="ta_copyright_changeHandler(event)">
+	</s:TextArea>
+	
+	<s:HGroup width="100%">
+		<s:HGroup width="100%" horizontalAlign="left">
+			<buttons:WSIconButton width="150" label="Clear All" icon="{IconLib.DELETE_16}" id="btn_clearAll" click="btn_clearAll_clickHandler(event)" visible="{image.image_tags != null || image.content != null || image.copyright != null}"/>
+		</s:HGroup>
+		<s:HGroup width="100%" horizontalAlign="right">
+			<buttons:WSIconButton width="150" visible="{image.image_tags != null || image.content != null || image.copyright != null}" label="Apply to Images" icon="{IconLib.DOC_EDIT_16}" id="btn_apply" click="btn_apply_clickHandler(event)" />
+		</s:HGroup>
+	</s:HGroup>
+	
+	
+</s:Group>

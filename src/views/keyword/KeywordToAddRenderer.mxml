@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" minWidth="300" creationComplete="cc()" xmlns:language="views.language.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.events.KeywordEvent;
+			
+			import spark.events.IndexChangeEvent;
+			protected function btn_add_keyword_clickHandler(event:MouseEvent):void
+			{
+				keyword.keyword_type = cbx_keyword_types.textInput.text;
+				keyword.keyword_tags = ti_tags.text;
+				dispatchEvent(new KeywordEvent(KeywordEvent.ADD_TO_LIST,keyword));
+				btn_add_keyword.visible = false;
+				cbx_keyword_types.enabled = false;
+			}
+
+			
+
+
+			protected function langChanger_changeHandler(event:IndexChangeEvent):void
+			{
+				keyword.keyword_language = langChanger.getSelectedLangCode();
+			}
+
+
+			protected function langFlag_clickHandler(event:MouseEvent):void
+			{
+				showingLanguages = !showingLanguages;
+			}
+
+		]]>
+	</fx:Script>
+	
+	
+	<fx:Declarations>
+		<s:SolidColor id="normalColor" color="#000000"/>
+		<s:SolidColor id="hoveredColor" color="#FF0000"/>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.json.controllers.WSKeywordController;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			import com.pbsmediatech.json.utils.JSONResultHelper2;
+			import jp.wordsmart.WordSmartConstants;
+			import utils.array.containsObjectWithSameParameterValue;
+			import mx.rpc.events.ResultEvent;
+
+
+			import jp.wordsmart.model.AppModel;
+			import mx.collections.ArrayCollection;
+			import jp.wordsmart.dto.WSKeyword;
+			
+			[Bindable]
+			private var showingLanguages:Boolean;
+			
+			private function cc():void
+			{
+				
+			/* 		new WSKeywordController(getServiceBaseURL()).get_keywords_types(function(evt:ResultEvent):void
+					{
+						var helper:JSONResultHelper2 = new JSONResultHelper2();
+						var results:Array = helper.resultToArray(evt.result.toString());
+						keyword_types = new ArrayCollection(results);
+						
+						if(!containsObjectWithSameParameterValue(keyword.keyword_type, "keyword_type", keyword_types.source))
+							{
+								var kwType:Object = {"keyword_type":keyword.keyword_type};
+								keyword_types.addItemAt(kwType,0);
+							}
+						cbx_keyword_types.textInput.text = keyword.keyword_type;
+					}); */
+						
+			}
+				
+			
+								
+			
+			
+			[Bindable]
+			private var keyword:WSKeyword;
+			[Bindable]
+			public var keyword_types:ArrayCollection;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				keyword = value as WSKeyword;
+				
+				
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="normal"/>
+		<s:State name="hovered"/>
+	</s:states>
+	
+	<s:layout>
+		<s:HorizontalLayout paddingLeft="5" paddingTop="5" paddingRight="5" paddingBottom="5" verticalAlign="middle" />
+	</s:layout>
+	
+	<s:Ellipse fill="{normalColor}" fill.hovered="{hoveredColor}" width="10" height="10" />
+	<s:VGroup paddingLeft="3" width="100%">
+		<s:Label text="{keyword.keyword_text}" width="100%"/>
+		<s:HGroup width="100%" verticalAlign="middle" height="26">
+			<language:LanguageFlag buttonMode="true" languageCode="{keyword.keyword_language}" useHandCursor="true" id="langFlag" click="langFlag_clickHandler(event)"/>
+			<language:LanguageDropDown includeInLayout="{showingLanguages}" visible="{showingLanguages}"  id="langChanger" language="{keyword.keyword_language}" change="langChanger_changeHandler(event)"/>
+			<s:ComboBox includeInLayout="{!showingLanguages}" visible="{!showingLanguages}" id="cbx_keyword_types" dataProvider="{keyword_types}" labelField="keyword_type"/>	
+		</s:HGroup>
+		
+		<s:TextInput width="100%" id="ti_tags" toolTip="Add tags (Seperate with ,)"/>
+	</s:VGroup>
+	<s:HGroup horizontalAlign="right" paddingRight="3">
+		<mx:Image buttonMode="true" source="{IconLib.ADD_KEYWORD_32}"  width="32" height="32"  toolTip="Add" id="btn_add_keyword" click="btn_add_keyword_clickHandler(event)"/>
+	</s:HGroup>
+</s:ItemRenderer>

@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" show="onShow()"  minWidth="350" minHeight="350" width="100%" height="100%" creationComplete="cc()" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout paddingBottom="3" paddingLeft="2" paddingRight="2" paddingTop="2"/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.events.KeywordEvent;
+			
+			import mx.events.ListEvent;
+			import mx.events.ResizeEvent;
+			
+			import views.other.LangDestinationToSourceIconItemRenderer;
+			protected function btn_mark_done_clickHandler(event:MouseEvent):void
+			{
+				if(!seletedRequest)return;
+				
+				seletedRequest.request_fulfilled_by = AppModel.getInstance().signedInContributor.ID;
+				transCon.update_translation_request(seletedRequest,function(evt:ResultEvent):void
+				{
+					loadedRequests.removeItemAt(loadedRequests.getItemIndex(seletedRequest));
+					seletedRequest = null;
+				});
+			}
+
+			protected function btn_load_clickHandler(event:MouseEvent):void
+			{
+				if(!seletedRequest)return;
+				dispatchEvent(new KeywordEvent(KeywordEvent.LOAD_FOR_TRANSLATION, seletedRequest.keyword));
+			}
+
+
+			
+
+
+			protected function dg_itemClickHandler(event:ListEvent):void
+			{
+				seletedRequest = dg.selectedItem as TranslationRequest;
+			}
+
+
+
+		]]>
+	</fx:Script>
+
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.json.controllers.TranslationRequestController;
+			import jp.wordsmart.utils.jsonhelpers.TranslationRequestResultHelper;
+			
+
+			
+			import mx.rpc.events.ResultEvent;
+			protected function btn_getTransRequests_clickHandler(event:MouseEvent):void
+			{
+				var langPair:Object = translationPairs[cbx_trans.selectedIndex];
+				transCon.get_request_by_source_and_target_and_type(langPair["src"], langPair["dest"],"T", function(evt:ResultEvent):void
+				{
+					loadedRequests.source = new TranslationRequestResultHelper().convertToArray(evt.result.toString());
+				});
+								
+			}
+			protected function btn_getProofRequests_clickHandler(event:MouseEvent):void
+			{
+				var langPair:Object = proofReadPairs[cbx_trans.selectedIndex];
+				transCon.get_request_by_source_and_target_and_type(langPair["src"], langPair["dest"],"P", function(evt:ResultEvent):void
+				{
+					loadedRequests.source = new TranslationRequestResultHelper().convertToArray(evt.result.toString());
+				});
+			}
+
+		]]>
+	</fx:Script>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			import jp.wordsmart.dto.TranslationRequest;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+
+			private var transCon:TranslationRequestController = new TranslationRequestController(DomainSettings.API_URL);
+			
+			
+			[Bindable]
+			private var translationPairs:ArrayCollection;
+			[Bindable]
+			private var proofReadPairs:ArrayCollection;
+			[Bindable]
+			private var loadedRequests:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var seletedRequest:TranslationRequest;
+			
+			
+			private function onShow():void
+			{
+				//check to see if we need to load pair again
+				cc();
+			}
+			private var lastLoadedPairs:String //record so we don't have to keep doing this
+			public function cc():void
+			{
+				var trans_pairs:String = AppModel.getInstance().signedInContributor.user_trans_pairs;
+				if(lastLoadedPairs != trans_pairs)
+				{
+				lastLoadedPairs = trans_pairs;
+				var transPairs:Array = [];
+				var proofPairs:Array = [];
+				var tPairs:Array = AppModel.getInstance().signedInContributor.translationPairs
+				for each (var obj:Object in tPairs)
+				{
+					
+					var langSourceObj:Object = languageCodeToLanguageObject(obj["src"]);
+					var langDestObj:Object = languageCodeToLanguageObject(obj["dest"]); 
+					obj.label = langSourceObj.label+" -> "+langDestObj.label;
+					obj.sourceIcon = langSourceObj.icon;
+				    obj.destIcon = langDestObj.icon;
+					if(obj["type"] == "T")
+					{
+					transPairs.push(obj);
+					}
+					else if(obj["type"] == "P")
+					{
+						proofPairs.push(obj);
+					}
+				}
+				
+				translationPairs = new ArrayCollection(transPairs);
+				if(translationPairs.length>0)
+				{
+					cbx_trans.selectedIndex = 0;
+				}
+				proofReadPairs = new ArrayCollection(proofPairs);
+				if(proofReadPairs.length>0)
+				{
+					cbx_proofs.selectedIndex = 0;
+				}
+				}
+				
+			}
+			
+			private function getType(item:TranslationRequest, column:DataGridColumn):String
+			{
+				var value:String = item.request_type;
+				
+				if(value == "T")
+				{
+					return "Translate";
+				}
+				else if(value == "P")
+				{
+					return "Proof";
+				}
+				
+				return "";
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Label text="Translation" width="100" paddingRight="20"/>
+			<s:DropDownList width="250" id="cbx_trans" dataProvider="{translationPairs}" prompt="Select Translation Pair" itemRenderer="views.other.LangDestinationToSourceIconItemRenderer"/>
+			<mx:Image buttonMode="true" source="{IconLib.RELOAD}" width="20" height="20" toolTip="Find Requests" id="btn_getTransRequests" click="btn_getTransRequests_clickHandler(event)"/> 
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Label text="Proof" width="100" paddingRight="20"/>
+			<s:DropDownList width="250" id="cbx_proofs" dataProvider="{proofReadPairs}" prompt="Select Proof Pair" itemRenderer="views.other.LangDestinationToSourceIconItemRenderer"/>
+			<mx:Image buttonMode="true" source="{IconLib.RELOAD}" width="20" height="20" toolTip="Find Requests" id="btn_getProofRequests" click="btn_getProofRequests_clickHandler(event)"/> 
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%">
+		<mx:DataGrid dataProvider="{loadedRequests}" width="100%" height="100%" id="dg" itemClick="dg_itemClickHandler(event)">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Date" width="135" dataField="request_date_added"/>
+				<mx:DataGridColumn headerText="Text" width="200" dataField="keyword.keyword_text"/>
+				<mx:DataGridColumn headerText="Type" width="200" dataField="request_type" labelFunction="getType"/>
+				<mx:DataGridColumn headerText="Notes" width="200" dataField="request_notes"/>
+				
+			</mx:columns>
+		</mx:DataGrid>
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle" height="36" bottom="0">
+			<s:HGroup paddingLeft="2" width="100%" horizontalAlign="left">
+				<buttons:WSIconButton icon="{IconLib.MARK_AS_DONE_16}" width="150"   visible="{seletedRequest != null}" toolTip="Mark Request as Done" label="Mark Done" id="btn_mark_done" click="btn_mark_done_clickHandler(event)"/>
+			</s:HGroup> 
+			<s:HGroup width="100%" horizontalAlign="right" paddingRight="12">
+				<buttons:WSIconButton icon="{IconLib.LOAD_KEYWORDS_16}" width="150"  visible="{seletedRequest != null}" toolTip="Load Request" label="Load Request" id="btn_load" click="btn_load_clickHandler(event)"/>
+			</s:HGroup>
+		</s:HGroup>
+	</s:VGroup>
+	
+	
+	
+	
+	
+	
+</s:Group>

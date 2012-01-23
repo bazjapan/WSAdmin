@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" xmlns:buttons="views.buttons.*" xmlns:image="views.image.*" xmlns:slide="views.slide.*">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center"/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.components.dynoSlide.DynoBitMap;
+			import jp.wordsmart.components.dynoSlide.DynoText;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.events.SlideEvent;
+			import jp.wordsmart.model.ImageCreatorModel;
+			import jp.wordsmart.model.SlideAdderModel;
+			
+			import mx.events.CloseEvent;
+			import mx.events.IndexChangedEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.TitleWindow;
+			
+			import ui.titlewindows.CollapsibleTitleWindow;
+			
+			import views.other.URLAdder;
+
+			
+
+			protected function btn_addImageFromURL_clickHandler(event:MouseEvent):void
+			{
+				var pop:TitleWindow = new TitleWindow;
+				pop.title = "Load Image from URL";
+				pop.addEventListener(CloseEvent.CLOSE,function(ce:CloseEvent):void
+				{
+					cleanUp();
+				});
+				var urlAdder:URLAdder = new URLAdder
+				pop.addElement(urlAdder);
+				urlAdder.loadFunction = function(url:String):void
+				{
+					selectedEditor.addNewImage(url,true);
+					cleanUp();
+						
+				}
+				PopUpManager.addPopUp(pop,this);
+				PopUpManager.centerPopUp(pop);
+				
+				function cleanUp():void
+				{
+					PopUpManager.removePopUp(pop);
+					urlAdder = null;
+					pop = null;
+				}
+			}
+			private var fileRef:File;
+			protected function btn_addFile_clickHandler(event:MouseEvent):void
+			{
+				fileRef = new File();
+				fileRef.addEventListener(Event.SELECT, function(evt:Event):void
+				{//check size Max
+					addImageFromFile(fileRef);
+					
+				});
+				fileRef.addEventListener(Event.COMPLETE	,function(evt:Event):void
+				{
+					
+				});
+				fileRef.addEventListener(ProgressEvent.PROGRESS,function(progEvt:ProgressEvent):void
+				{
+					
+				});
+				
+				
+				fileRef.browse([new FileFilter("Images", "*.jpg;*.gif;*.png")]);
+				
+			}
+			private function addImageFromFile(f:File):void
+			{
+				if(!selectedEditor)return;
+				selectedEditor.addNewImage(f.url,true);
+			}
+
+			private var imageFinder:CollapsibleTitleWindow
+			protected function btn_searchForImage_clickHandler(event:MouseEvent):void
+			{
+				if(!imageFinder)
+				{
+				imageFinder = new CollapsibleTitleWindow;
+				imageFinder.title = "Search for Image";
+				imageFinder.addEventListener(CloseEvent.CLOSE,function(ce:CloseEvent):void
+				{
+					doCleanUp()
+				});
+				var search:AddImageFromSearch = new AddImageFromSearch();
+				imageFinder.addElement(search);
+				search.selectedCallback = function(image:WSImage):void
+				{
+					selectedEditor.addNewImage(image.image_url,true);
+					doCleanUp();
+				}
+				}
+					PopUpManager.addPopUp(imageFinder,this);
+					PopUpManager.centerPopUp(imageFinder);
+					
+					function doCleanUp():void
+					{
+						PopUpManager.removePopUp(imageFinder);
+					}
+			}
+
+
+			protected function btn_copyItem_clickHandler(event:MouseEvent):void
+			{
+				if(!selectedEditor){btn_pasteItem.visible = false; return;};
+				if(!selectedEditor.selected_object){btn_pasteItem.visible = false; return;};
+				ImageCreatorModel.getInstance().lastCopied = selectedEditor.selected_object;
+				btn_pasteItem.visible = true;
+				
+			}
+
+
+			protected function btn_deleteItem_clickHandler(event:MouseEvent):void
+			{
+				if(!selectedEditor){return;};
+				if(!selectedEditor.selected_object){return;};
+				selectedEditor.removeDynoObject();
+			}
+
+
+			protected function btn_cropItem_clickHandler(event:MouseEvent):void
+			{
+				if(!selectedEditor){return;};
+				if(!selectedEditor.selected_object){return;};
+				selectedEditor.cropBitMap();
+			}
+
+
+			protected function btn_pasteItem_clickHandler(event:MouseEvent):void
+			{
+				if(!selectedEditor){return;};
+				if(!ImageCreatorModel.getInstance().lastCopied){return;};
+				selectedEditor.paste(ImageCreatorModel.getInstance().lastCopied);
+			}
+
+
+			protected function btn_expandItem_clickHandler(event:MouseEvent):void
+			{
+				if(!selectedEditor){return;};
+				if(selectedEditor.selected_object is DynoBitMap)
+				{
+				if(!selectedEditor.selected_dynoBitMap){return;};
+				selectedEditor.maximizeImage();
+				}
+				else if(selectedEditor.selected_object is DynoText)
+				{
+					selectedEditor.maximizeTextArea();
+				}
+			}
+
+			protected function btn_mainTainAspectRatio_clickHandler(event:MouseEvent):void
+			{
+				if(!selectedEditor){return;};
+				selectedEditor.setMaitainAspectRatio(ButtonBarButton(event.target).selected);
+			}
+			
+
+
+
+
+			protected function saveSlide():void
+			{
+				var evt:SlideEvent
+				if(isNaN(selectedEditor.wordSmartImage.image_ID))
+				{
+				 evt = new SlideEvent(SlideEvent.EVENT_REGISTER_SLIDE,selectedEditor.wordSmartImage,
+					function():void
+					{
+					trace("Slide Registered");
+					
+					});
+				
+				}
+				else
+				{
+				evt = new SlideEvent(SlideEvent.EVENT_UPDATE_SLIDE, selectedEditor.wordSmartImage,
+					function():void
+					{
+						trace("Slide Updated");	
+					});
+				}
+				selectedEditor.updateModel();
+				evt.bitmapData = selectedEditor.getBitMapData();
+				dispatchEvent(evt);
+			}
+
+
+			
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.utils.WSImageUtils;
+			import jp.wordsmart.model.AppModel;
+			import spark.components.NavigatorContent;
+			import jp.wordsmart.slide.makeDefaultSlide;
+			import mx.controls.Alert;
+			import jp.wordsmart.utils.ItemsDroppedOnComponent;
+			import mx.events.DragEvent;
+			import jp.wordsmart.components.dynoSlide.tasks.cloneDynoSlideModel;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.dto.WSImage;
+			import mx.events.FlexEvent;
+			import utils.object.clone;
+			import jp.wordsmart.dto.WSImage;
+			[Bindable]private var selectedEditor:WSImageEditor ;
+			
+			private var dragDropHelper:ItemsDroppedOnComponent;
+			private function cc():void
+			{
+			//selectedEditor = WSImageEditor(NavigatorContent(vs.getChildAt(0)).getElementAt(0));
+			dragDropHelper = new ItemsDroppedOnComponent(["JPG","PNG", "GIF"],[],"non_needed",true);
+			dragDropHelper.attachComponent(container);
+			dragDropHelper.enabled = true
+			dragDropHelper.addEventListener("ITEMS_READY_FOR_UPLOAD_EVENT", onIMAGE_DROPPED_HANDLER);
+			
+			}
+			
+			
+			//returns array of WSImages
+			public function getCurrentlyEditing():Array
+			{
+				var editing:Array = [];
+				var numEditors:int = vs.numChildren;
+				for (var i:int = 0; i < numEditors; i++)
+				{
+					editing.push(WSImageEditor(NavigatorContent(vs.getChildAt(i)).getElementAt(0)).wordSmartImage);
+					
+				}
+				return editing;
+			}
+			public function setSelectedEditor(img:WSImage):int
+			{
+				//returns new index if found else -1 
+				//-1 meads the Image is not being edited;
+				var editing:Array = getCurrentlyEditing();
+				for (var i:int = 0; i < editing.length; i++)
+				{
+					if(!isNaN(WSImage(editing[i]).image_ID ))
+					{
+					if(WSImage(editing[i]).image_ID == img.image_ID)
+					{
+						vs.selectedIndex =  i;
+						selectedEditor = WSImageEditor(NavigatorContent(vs.getChildAt(i)).getElementAt(0));
+						return i;
+					}
+					}
+				}
+				return -1;
+			}
+
+			private function onIMAGE_DROPPED_HANDLER(event:Event):void
+			{
+				if(!selectedEditor)return;
+				for each (var f:File in dragDropHelper.files_just_added)
+				{
+					addImageFromFile(f);
+				}
+				
+			}
+			
+			
+			protected function vs_changeHandler(event:IndexChangedEvent):void
+			{
+				selectedEditor = WSImageEditor(NavigatorContent(vs.getChildAt(event.newIndex)).getElementAt(0));
+			}
+			private function copyToNew():void
+			{
+				selectedEditor = WSImageEditor(NavigatorContent(vs.getChildAt(vs.selectedIndex)).getElementAt(0));
+				selectedEditor.updateModel();
+				trace("copyToNew: "+selectedEditor.wordSmartImage.image_edit_model)
+				var copied:WSImage = new WSImageUtils().clone(selectedEditor.wordSmartImage);
+				
+				insertEditor(copied);
+			}
+			private function closeEditor():void
+			{
+			if(vs.selectedIndex<0)return;
+			vs.removeItemAt(vs.selectedIndex);
+			if(vs.selectedIndex == -1)
+			{
+				selectedEditor = null;
+			}
+			
+			}
+			public function editImage(img:WSImage):void
+			{
+				selectedEditor = insertEditor(img);
+			}
+			private function makeNew():void
+			{
+				if(vs.numChildren>14){Alert.show("Please close an Editor to open a new one.", "Too Many Editors Open")};
+				selectedEditor = insertEditor(makeDefaultSlide(AppModel.getInstance().signedInContributor.ID));
+			}
+			public function insertEditor(img:WSImage):WSImageEditor
+			{
+				var copied:WSImage = new WSImage(clone(img));
+				
+				var nc:NavigatorContent = new NavigatorContent;
+				var wsEditor:WSImageEditor = new WSImageEditor;
+				wsEditor.imageHeight = SlideAdderModel.getInstance().imageHeight;
+				wsEditor.imageWidth = SlideAdderModel.getInstance().imageWidth;
+				wsEditor.addEventListener(FlexEvent.CREATION_COMPLETE,function(fe:FlexEvent):void{
+					wsEditor.load(copied);
+				});
+				nc.addElement(wsEditor);
+				vs.addItem(nc);
+				nc.label = vs.numChildren.toString();
+				vs.selectedIndex = vs.numChildren-1;
+				return wsEditor;
+			}
+			private function getSelectedImage():WSImage
+			{
+				return WSImageEditor(NavigatorContent(vs.getChildAt(vs.selectedIndex)).getElementAt(0)).wordSmartImage;
+			}
+
+		]]>
+	</fx:Script>
+	<s:VGroup id="container" maxWidth="{SlideAdderModel.getInstance().imageWidth}" width="{SlideAdderModel.getInstance().imageWidth}" height="100%">
+		<s:HGroup width="100%">
+        		<s:HGroup width="100%" horizontalAlign="left">
+					<s:HGroup id="buttonGroup1">
+					<slide:SlideAdderNavigatorBar 
+						id="navi" 
+						showListButton="true">
+					</slide:SlideAdderNavigatorBar>
+					</s:HGroup>
+					<s:HGroup width="100%">
+						<s:ButtonBar dataProvider="{vs}" height="24" maxWidth="{SlideAdderModel.getInstance().imageWidth - (buttonGroup1.width+150)}"/>
+					</s:HGroup>
+					<s:HGroup horizontalAlign="right" id="buttonBar2">
+						
+					<slide:SlideAdderButtons wordSmartImage="{selectedEditor.wordSmartImage}" 
+											 showEditDetails="{!isNaN(selectedEditor.wordSmartImage.image_ID)}" 
+											 showShowKeywordDetails="{!isNaN(selectedEditor.wordSmartImage.image_ID)}" 
+											 showAddToKeyword="{!isNaN(selectedEditor.wordSmartImage.image_ID)}" 
+											 showSaveSlide="{selectedEditor.wordSmartImage != null &amp;&amp; !selectedEditor.pendingEdit}"
+											 saveFunc="saveSlide"
+											 />
+					</s:HGroup>
+				</s:HGroup>	
+        		
+        	</s:HGroup>	
+        
+		
+			
+		<mx:ViewStack id="vs" width="{SlideAdderModel.getInstance().imageWidth}" height="{SlideAdderModel.getInstance().imageHeight}" change="vs_changeHandler(event)">
+			<!--<s:NavigatorContent label="1"
+								width="100%" height="100%">
+				<image:WSImageEditor id="editor" width="100%" height="100%" imageHeight="{SlideAdderModel.getInstance().imageHeight}" imageWidth="{SlideAdderModel.getInstance().imageWidth}">
+					
+				</image:WSImageEditor>
+			</s:NavigatorContent>-->
+			
+		</mx:ViewStack>
+	</s:VGroup>
+		
+	
+	<s:HGroup width="100%">
+		
+		<s:HGroup width="100%">
+			<s:HGroup width="100%" paddingLeft="2" paddingRight="2" maxWidth="{SlideAdderModel.getInstance().imageWidth}">
+            		<s:HGroup paddingLeft="2" paddingRight="5" horizontalAlign="left">
+						<buttons:WSIconButton 
+							width="24" height="24"  
+							toolTip="Create New Slide" 
+							id="btn_makeNew" 
+							icon="{IconLib.ADD_16}" 
+							click="{makeNew()}"/>
+						<buttons:WSIconButton 
+							enabled="{selectedEditor != null}" 
+							width="24" height="24" 
+							toolTip="Copy Slide to New Editor" 
+							id="btn_copyImage" 
+							icon="{IconLib.COPY_16}" 
+							click="copyToNew()"/>
+						<mx:VRule height="24"/>
+            		</s:HGroup>	
+				<s:HGroup paddingRight="2" horizontalAlign="left">
+			
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						width="24" height="24"  
+						toolTip="Add Text"  
+						icon="{IconLib.TEXT_16}" 
+						click="selectedEditor.addNewText('Text')"/>
+					<mx:VRule height="24"/>
+				</s:HGroup>	
+				<s:HGroup paddingRight="5" horizontalAlign="left">
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						width="24" height="24" 
+						toolTip="Search for Image" 
+						id="btn_searchForImage" 
+						icon="{IconLib.ZOOM_16}" 
+						click="btn_searchForImage_clickHandler(event)"/>
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						width="24" height="24" 
+						toolTip="Add Image from URL" 
+						id="btn_addImageFromURL" 
+						icon="{IconLib.GLOBE_16}" 
+						click="btn_addImageFromURL_clickHandler(event)"/>
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						width="24" height="24" 
+						toolTip="Add Image from File" 
+						id="btn_addImageFromFile" 
+						icon="{IconLib.DOC_16}" 
+						click="btn_addFile_clickHandler(event)"/>
+					
+					<mx:VRule height="24"/>
+				</s:HGroup>	
+				<s:HGroup paddingRight="3" horizontalAlign="left">
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						visible="{selectedEditor.selected_object != null}"
+						width="24" height="24" 
+						toolTip="Copy Item" 
+						id="btn_copyItem" 
+						icon="{IconLib.COPY_16}" 
+						click="btn_copyItem_clickHandler(event)"/>
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						visible="{ImageCreatorModel.getInstance().lastCopied != null}" 
+						width="24" height="24" 
+						toolTip="Paste Item" 
+						id="btn_pasteItem" 
+						icon="{IconLib.CLIPBOARD_PASTE_16}" 
+						click="btn_pasteItem_clickHandler(event)"/>
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						visible="{selectedEditor.selected_object != null}"
+						width="24" height="24" 
+						toolTip="Delete Item" 
+						id="btn_deleteItem" 
+						icon="{IconLib.DELETE_16}" 
+						click="btn_deleteItem_clickHandler(event)"/>
+					<buttons:WSIconButton 
+						enabled="{selectedEditor != null}" 
+						visible="{selectedEditor.selected_object is DynoBitMap}"
+						width="24" height="24" 
+						toolTip="Crop Image" 
+						id="btn_cropItem" 
+						icon="{IconLib.CROP_16}" 
+						click="btn_cropItem_clickHandler(event)"/>
+					<buttons:WSIconButton 
+						enabled="{selectedEditor.selected_object != null}" 
+						width="24" height="24" 
+						visible="{selectedEditor.selected_object != null}"
+						toolTip="Expand Image to Fill Screen" 
+						id="btn_expandItem" 
+						icon="{IconLib.FULLSECREEN_16}" 
+						click="btn_expandItem_clickHandler(event)"/>
+					<mx:VRule height="24"/>
+				</s:HGroup>	
+				<s:HGroup paddingRight="0" horizontalAlign="left">
+					<s:ButtonBarButton 
+						enabled="{selectedEditor != null}"
+						skinClass="views.other.CustomIconButtonSkin" 
+					   data="{{'icon':IconLib.ASPECT_16}}" 
+					   selected="{selectedEditor.maintainAspectRatio}"
+					   id="btn_mainTainAspectRatio"
+					   click="btn_mainTainAspectRatio_clickHandler(event)" 
+					   toolTip="Maintain Aspect Ratio" width="24" height="24"/>
+					<mx:VRule height="24"/>
+				</s:HGroup>	
+				<s:BorderContainer visible="true" id="bc_imageDetails" backgroundColor="0" backgroundAlpha="0.5" width="155" height="22" cornerRadius="8">
+				<s:layout>
+				<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle" paddingRight="5" paddingLeft="5"/>
+				</s:layout>
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+				<s:Label id="lb_x" fontSize="11" color="0xFFFFFF" text="{'x: '+Math.round(selectedEditor.selected_object.x)}"/>	
+				</s:HGroup>
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+				<s:Label id="lb_y" fontSize="11" color="0xFFFFFF" text="{'y: '+Math.round(selectedEditor.selected_object.y)}" />	
+				</s:HGroup>
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+				<s:Label id="lb_height" fontSize="11" color="0xFFFFFF" text="{'h: '+Math.round(selectedEditor.selected_object.height)}"/>	
+				</s:HGroup>
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+				<s:Label id="lb_width" fontSize="11" color="0xFFFFFF" text="{'w: '+Math.round(selectedEditor.selected_object.width)}" />	
+				</s:HGroup>
+				</s:BorderContainer>
+            		<s:HGroup width="100%" horizontalAlign="right">
+						<mx:VRule height="24"/>
+				
+						<buttons:WSIconButton 
+							enabled="{selectedEditor != null}" 
+							width="24" height="24"  
+							toolTip="Close Editor"  
+							icon="{IconLib.DELETE_16}" 
+							click="closeEditor()"/>
+            		</s:HGroup>	
+            	</s:HGroup>	
+        </s:HGroup>
+		
+
+	</s:HGroup>
+	
+
+</s:Group>

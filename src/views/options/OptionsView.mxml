@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" creationComplete="cc(event)" height="100%" xmlns:language="views.language.*" xmlns:user="views.user.*" xmlns:controls="com.adobe.flex.extras.controls.*" xmlns:other="views.other.*" xmlns:options="views.options.*" xmlns:views="views.*" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	
+	<s:states>
+		<s:State name="app"/>
+		<s:State name="details"/>
+		<s:State name="audio"/>
+		<s:State name="written"/>
+	</s:states>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.json.controllers.UserController;
+			
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.Label;
+			
+			import ui.titlewindows.CollapsibleTitleWindow;
+			import ui.titlewindows.SuperTitleWindowSkin;
+			
+			import views.language.LanguageChooser;
+			
+			
+			[Bindable]
+			public var contributor:Contributer;
+			
+			public var registerSuccessFunc:Function
+			
+			protected function cc(event:FlexEvent):void
+			{
+				
+				
+			}
+			private function showLanguageChoices(excludes:Array, callback:Function):void
+			{
+				var lc:CollapsibleTitleWindow = new CollapsibleTitleWindow();
+				lc.setStyle("skinClass", SuperTitleWindowSkin);
+				lc.title = "Choose Language";
+				var inner:LanguageChooser = new LanguageChooser;
+				inner.languagesNotToShow = excludes;
+				inner.showControls = false;
+				lc.addElement(inner);
+				
+				
+				inner.addEventListener("LANGUAGE_SELECTED_EVENT", function(evt:Event):void
+				{
+					trace(evt.currentTarget);
+					trace(evt.target["languageObject"]);
+					callback(evt.target["languageObject"]);
+					PopUpManager.removePopUp(lc);
+				});
+				
+				lc.addEventListener(CloseEvent.CLOSE, function(evt:CloseEvent):void
+				{
+					PopUpManager.removePopUp(lc);
+				});
+				
+				PopUpManager.removePopUp(lc);
+				PopUpManager.addPopUp(lc, this);
+			}
+			
+			private function save():void
+			{
+				if(cc_written)
+				{
+				cc_written.saveContributer();	
+				}
+				if(cc_languages)
+				{
+				cc_languages.saveContributer();
+				}
+				if(cc_details)
+				{
+				cc_details.saveContributer();
+				}
+				if(cc_appSettings)
+				{
+				cc_appSettings.saveContributer();
+				}
+				var uc:UserController = new UserController(DomainSettings.API_URL);
+				if(contributor.ID)
+				{
+					uc.update_contributer(contributor, function(evt:ResultEvent):void
+					{
+						trace("your profile has been updated")
+						lb_status.text = "Your profile has been updated"
+					});
+				}
+					
+			}
+			
+			
+			
+			
+			protected function cc_languages_creationCompleteHandler(event:FlexEvent):void
+			{
+				cc_languages.setContributer(contributor);
+			}
+			
+			
+			protected function cc_written_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+				cc_written.setContributer(contributor);
+			}
+			
+			
+			
+			
+
+			protected function cc_details_creationCompleteHandler(event:FlexEvent):void
+			{
+				cc_details.setContributer(contributor);
+			}
+
+
+			protected function cc_appSettings_creationCompleteHandler(event:FlexEvent):void
+			{
+				cc_appSettings.setContributer(contributor);
+			}
+
+
+			private var stateInfo:Array = [{"label":"Settings","icon":IconLib.OPTIONS_16, 'state':'app'}, 
+				{"label":"Personal","icon":IconLib.CONTACT_CARD_16, 'state':'details'},
+				{"label":"Audio","icon":IconLib.MICROPHONE_16, 'state':'audio'},
+				{"label":"Written","icon":IconLib.TEXT_16, 'state':'written'},
+			]
+			protected function toggle_states_itemClickHandler(event:ItemClickEvent):void
+			{
+				this.currentState = stateInfo[toggle_states.selectedIndex]['state'];
+			}	
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:HGroup paddingTop="5" horizontalAlign="center" width="100%" paddingLeft="3" paddingRight="3">
+	
+		
+		<mx:ToggleButtonBar id="toggle_states" width="100%"
+							horizontalGap="5"
+							itemClick="toggle_states_itemClickHandler(event)"
+							toggleOnClick="true"
+							selectedIndex="0" dataProvider="{stateInfo}" labelField="label">
+		</mx:ToggleButtonBar>
+		
+		
+		
+	</s:HGroup>
+	<options:AppSettings id="cc_appSettings" creationComplete="cc_appSettings_creationCompleteHandler(event)" includeIn="app" height="100%" showLanguageChoices="{showLanguageChoices}"/>
+	<user:ContributorDetails creationComplete="cc_details_creationCompleteHandler(event)"  id="cc_details" includeIn="details" height="100%"/>
+	<user:ContributerAudioLanguages creationComplete="cc_languages_creationCompleteHandler(event)" height="100%" id="cc_languages" showLanguageChoices="{showLanguageChoices}" includeIn="audio"/>
+	<user:ContributerWrittenLanguagePairs creationComplete="cc_written_creationCompleteHandler(event)" height="100%" id="cc_written" showLanguageChoices="{showLanguageChoices}" includeIn="written"/>
+
+	
+	
+	<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right" paddingBottom="5" paddingRight="5">
+		<s:HGroup horizontalAlign="left" paddingLeft="10" verticalAlign="middle" width="100%">
+			<s:Label id="lb_status" fontWeight="bold"/>
+		</s:HGroup>
+		<buttons:SaveButton label="Save Options" width="120" visible="{cc_details.isValid}" click="save()"/>
+		</s:HGroup>	
+	
+	
+	</s:Group>

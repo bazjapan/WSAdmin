@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%" xmlns:buttons="views.buttons.*" xmlns:image="views.image.*">
+	<s:layout>
+		<s:VerticalLayout paddingLeft="3" paddingRight="3" paddingBottom="3"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.model.SlideAdderModel;
+			
+			import mx.collections.ArrayCollection;
+			
+			import utils.array.containsObjectWithSameParameterValue;
+			
+			public var uploadImage:Function;
+			public var registerFunc:Function;
+			
+			
+			
+			
+			[Bindable]private var canSave:Boolean;
+			[Bindable]private var canSendToTray:Boolean;
+			[Bindable]private var canAttach:Boolean;
+			[Bindable]public var imageDetails:String = '';
+			
+			
+			[Bindable]public var images:ArrayCollection;
+			
+			protected function cc():void
+			{
+				
+				lt_images.addEventListener("IMAGE_HOVER_EVENT",onIMAGE_HOVER_EVENT);
+				
+			}
+			
+			
+			
+			private function onIMAGE_HOVER_EVENT(event:Event):void
+			{
+				var img:WSImage = ImageSearchRenderer(event.target).image;
+				imageDetails = "Width: "+img.width+" Height: "+img.image_h;
+			}
+			
+			protected function btn_view_Image_clickHandler(event:MouseEvent):void
+			{
+				view_image(lt_images.selectedImage);
+			}
+			private function view_image(img:WSImage):void
+			{
+				canAttach = false;
+				canSave = false;
+				canSendToTray = false;
+				currentState = "view";
+				cc_imageViewer.wordsmartImage = img;
+			}
+			
+			
+			protected function btn_saveToWordsmart_clickHandler(event:MouseEvent):void
+			{
+				uploadImage(cc_imageViewer.getBitMapData(), function(uploadURL:String, imageSize:uint):void
+				{
+					trace("image uploaded to "+uploadURL);
+					cc_imageViewer.updateModel();
+					var imageToSave:WSImage = cc_imageViewer.getWSImage();
+					imageToSave.size = imageSize.toString();
+					imageToSave.url = uploadURL;
+					registerFunc(imageToSave, function(savedImage:WSImage):void
+					{
+						trace(savedImage.ID+" has been registered");
+					}
+					)
+				});
+			}
+			
+			
+			
+			
+			protected function btn_attachToKeyword_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function btn_sendToTray_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+			
+
+			protected function btn_clearList_clickHandler(event:MouseEvent):void
+			{
+				images.removeAll();
+			}
+
+
+			protected function btn_removeImage_clickHandler(event:MouseEvent):void
+			{
+				if(lt_images.selectedIndex<0)return;
+				images.removeItemAt(lt_images.selectedIndex);
+			}
+
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="list"/>
+		<s:State name="view"/>
+		<s:State name="details"/>
+	</s:states>
+	<s:VGroup includeIn="list" width="100%" height="100%">
+		<s:HGroup>
+			<buttons:WSIconButton id="btn_clearList" toolTip="Clear List" label="Clear List" click="btn_clearList_clickHandler(event)" />
+			<buttons:WSIconButton id="btn_removeImage" toolTip="Remove Selected Image" label="Remove Image" click="btn_removeImage_clickHandler(event)" />
+		</s:HGroup>
+		<image:ImageList id="lt_images" images="{images}" width="100%" height="100%" imageDoubleClickFunc="{view_image}"/>
+		<s:HGroup width="100%" paddingLeft="2" paddingRight="2" bottom="0">
+			<s:HGroup width="100%" horizontalAlign="left">
+				<s:VGroup width="100%">
+					<s:Label text="{imageDetails}"/>
+					<!--<s:Label text="{cc_search.pageNumber}"/>-->
+				</s:VGroup>
+			</s:HGroup>	
+			<s:HGroup width="100%" horizontalAlign="right">
+				<buttons:WSIconButton width="100" visible="{lt_images.selectedImage}" label="View" icon="{IconLib.PICTURE_16}" toolTip="View Image" id="btn_view_Image" click="btn_view_Image_clickHandler(event)"/>
+			</s:HGroup>	
+		</s:HGroup>	
+		
+	</s:VGroup>
+	<s:VGroup width="100%" height="100%" includeIn="view">
+		
+		<image:WSDynoImageViewer  id="cc_imageViewer" width="100%" height="100%">
+			
+		</image:WSDynoImageViewer>
+		<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+			<s:HGroup width="100%" horizontalAlign="left">
+				<buttons:WSIconButton width="100" label="Back" toolTip="Back to Searches" click="{currentState = 'list'}" icon="{IconLib.ARROW_LEFT_16}"/>
+			</s:HGroup>	
+			<s:HGroup width="100%" horizontalAlign="right">
+				<buttons:WSIconButton width="140" visible="{canAttach}" label="Attach to Keyword" id="btn_attachToKeyword" toolTip="Attach to Currently Selected Keyword" click="btn_attachToKeyword_clickHandler(event)" icon="{IconLib.CLIP_16}"/>
+				<buttons:WSIconButton width="140" visible="{canSendToTray}"  label="Send To Image Tray" id="btn_sendToTray" toolTip="Send to Image Tray" click="btn_sendToTray_clickHandler(event)" icon="{IconLib.TRAY_ADD_16}"/>
+				<buttons:SaveButton width="140" visible="{true}"  label="Add to WordSmart" id="btn_saveToWordsmart" toolTip="Add Image To WordSmart" click="btn_saveToWordsmart_clickHandler(event)"/>
+			</s:HGroup>	
+		</s:HGroup>	
+		
+	</s:VGroup>
+	
+	
+</s:Group>

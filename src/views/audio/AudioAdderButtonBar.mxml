@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<s:layout>
+		<s:HorizontalLayout verticalAlign="middle" horizontalAlign="left"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.AudioEvent;
+			
+			public var transcript:String;
+			public var language_code:String;
+
+			protected function btn_record_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO, makeDefaultAudio(),true));
+				
+			}
+
+
+			protected function btn_addbyURL_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_AUDIO_FROM_WEB_URL, makeDefaultAudio(),true));
+				// TODO Auto-generated method stub
+			}
+
+
+			protected function btn_getTextToSpeech_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_AUDIO_FROM_TEXT_TO_SPEECH, makeDefaultAudio(),true));
+				// TODO Auto-generated method stub
+			}
+
+
+			protected function btn_request_audio_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_AUDIO_FROM_COMPUTER_FILE, makeDefaultAudio(),true));
+				// TODO Auto-generated method stub
+			}
+
+
+			protected function btn_getFromComputer_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_AUDIO_FROM_COMPUTER_FILE, makeDefaultAudio(),true));
+			}
+			
+			private function makeDefaultAudio():WSAudio
+			{
+				var audio:WSAudio = getDefaultAudio();
+				audio.audio_transcript = transcript;
+				audio.audio_language = language_code;
+				return audio;
+			}
+
+
+			
+
+		]]>
+	</fx:Script>
+	
+	<mx:Image buttonMode="true" width="16" height="16" source="{IconLib.MICROPHONE_16}"  toolTip="Record Audio" id="btn_record" click="btn_record_clickHandler(event)"/>
+	<mx:Image buttonMode="true" width="16" height="16" source="{IconLib.GLOBE_16}"  toolTip="Add Audio from the Web" id="btn_addbyURL" click="btn_addbyURL_clickHandler(event)"/>
+	<mx:Image buttonMode="true" width="16" height="16" source="{IconLib.TEXT_16}" toolTip="Get Audio from Text to Speech" id="btn_getTextToSpeech" click="btn_getTextToSpeech_clickHandler(event)" />
+	<mx:Image buttonMode="true" width="16" height="16" source="{IconLib.DOC_16}" toolTip="Add Audio from your Computer" id="btn_getFromComputer" click="btn_getFromComputer_clickHandler(event)" />
+	
+	<mx:Image buttonMode="true" width="16" height="16" source="{IconLib.HAND_16}"  toolTip="Request Audio Recording" id="btn_request_audio" click="btn_request_audio_clickHandler(event)"/>
+	
+</s:Group>

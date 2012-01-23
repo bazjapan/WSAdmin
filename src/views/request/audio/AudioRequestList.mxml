@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="400" height="300">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.dto.AudioRequest;
+			import jp.wordsmart.events.CBEvent;
+			import jp.wordsmart.json.controllers.AudioRequestController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			import jp.wordsmart.utils.jsonhelpers.AudioRequestResultHelper;
+			
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.TextArea;
+			
+	
+			
+			public var language_code:String;
+			public var transcript:String;
+			
+			[Bindable]
+			public var requests:ArrayCollection = new ArrayCollection;
+			private var requestController:AudioRequestController = new AudioRequestController(getServiceBaseURL());
+			
+			private function cc():void
+			{
+				this.addEventListener("EDIT_AUDIO_REQUEST",onEDIT_REQUEST);
+				this.addEventListener("REMOVE_AUDIO_REQUEST",onREMOVE_REQUEST);			
+				this.addEventListener("MARK_AUDIO_REQUEST_FULLFILLED",onMARK_REQUEST_FULLFILLED);			
+			}
+
+			private function onMARK_REQUEST_FULLFILLED(event:CBEvent):void
+			{
+				requestController.update_audio_request(event.data,function(evt:ResultEvent):void
+				{
+					event.playCallbacks(true);	
+				});
+			}
+
+			private function onREMOVE_REQUEST(event:CBEvent):void
+			{
+				requestController.remove_request_by_id(event.data.audio_request_ID,function(evt:ResultEvent):void
+				{
+				event.playCallbacks(true);	
+				});
+			}
+
+			private function onEDIT_REQUEST(event:CBEvent):void
+			{
+				dispatchEvent(new CBEvent("OPEN_AUDIO_REQUESTER",[
+				function():void
+				{
+					trace("callback in audio request list");
+					event.playCallbacks(true);
+					//refresh_requests();
+				}
+				], event.data, true));
+				
+			}
+			
+			public function add_request():void
+			{
+				var recordingInfo:AudioRequest = new AudioRequest;
+				recordingInfo.audio_request_transcript = transcript;
+				recordingInfo.audio_request_language = language_code;
+				
+				dispatchEvent(new CBEvent("OPEN_AUDIO_REQUESTER",
+					[
+				function():void
+				{
+					//refresh_requests();
+				}
+				], 
+				recordingInfo, true));
+				
+			}
+			
+			
+			public function refresh_requests():void
+			{
+				requestController.get_request_by_language_and_transcript(language_code,transcript, function(evt:ResultEvent):void
+				{
+					requests.source = new AudioRequestResultHelper().convertToArray(evt.result.toString());
+				});
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:List width="100%" height="100%" dataProvider="{requests}" itemRenderer="views.request.audio.renderer.AudioRequestSimple" useVirtualLayout="false">
+		
+	</s:List>
+</s:Group>

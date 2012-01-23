@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:keyword="views.keyword.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.utils.keyword.tagStringToCollection;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			[Bindable]
+			public var keyword:WSKeyword;
+			
+			
+			
+			
+			
+		]]>
+	</fx:Script>
+	<keyword:KeywordTagEditor keyword="{keyword}" width="33%"/>
+
+</s:Group>

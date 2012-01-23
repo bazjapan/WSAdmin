@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:language="views.language.*" xmlns:audio="views.audio.*" xmlns:other="views.other.*" xmlns:buttons="views.buttons.*">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.utils.language.dialectCodeToDialectObject;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			import utils.array.getItemByKey;
+			
+			import views.other.LangIconItemRenderer;
+			
+			[Bindable]
+			public var genders:ArrayCollection = new ArrayCollection([{"label":"Unknown","value":"U"},{"label":"Male","value":"M"},{"label":"Female","value":"F"},{"label":"Mixed","value":"C"}]);
+			
+			[Bindable]
+			public var audio:WSAudio
+			
+			public var taggerOpen:Boolean;
+			[Bindable]
+			public var showAudioTagger:Function;
+			
+			public function saveDetails():void
+			{
+				audio.audio_language = langChanger.language;
+				audio.audio_rec_gen = dd_recorder_gender.selectedItem["value"] as String;
+				audio.audio_rec_age = ti_age.text;
+				audio.audio_rec_dia = dd_dialect.dialect;
+				audio.audio_transcript = ta_transcript.text;
+				audio.audio_copyright = ti_copyright.text;
+				audio.audio_mood = dd_mood.getMood();
+				audio.audio_type = dd_audio_type.selectedItem as String;
+			}
+			
+			protected function langChanger_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_language = langChanger.language;
+				dd_dialect.selectedLanguageCode = audio.audio_language;
+				audio.audio_rec_dia = dd_dialect.dialect;
+				trace("3" +audio.audio_rec_dia)
+			}
+			
+			
+			protected function dd_mood_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_mood = dd_mood.getMood();
+			}
+			
+			
+			protected function ta_audio_transcript_changeHandler(event:TextOperationEvent):void
+			{
+				audio.audio_transcript = ta_transcript.text;
+			}
+			
+			
+			protected function dd_recorder_gender_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_rec_gen = dd_recorder_gender.selectedItem["value"];
+			}
+			
+			
+			
+			
+			protected function ti_copyright_changeHandler(event:TextOperationEvent):void
+			{
+				audio.audio_copyright = ti_copyright.text;
+			}
+			
+			
+			protected function ti_age_changeHandler(event:TextOperationEvent):void
+			{
+				audio.audio_rec_age = ti_age.text;
+			}
+			
+			
+			protected function dd_dialect_changeHandler(event:IndexChangeEvent):void
+			{
+				
+				audio.audio_rec_dia = dd_dialect.dialect;
+				
+				trace("1" +dd_dialect.dialect);
+				trace("2" +audio.audio_rec_dia)
+				
+			}
+			public function btn_audio_tags_clickHandler(event:MouseEvent = null):void
+			{
+				if(showAudioTagger == null)return;
+				taggerOpen = true;
+				showAudioTagger(audio, function():void{
+					taggerOpen = false;
+					trace("Tagger has been closed")
+				});
+			}
+			
+
+			protected function dd_audio_type_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_type = dd_audio_type.selectedItem as String;
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+<!--	ADD SPEED-->
+	<s:VGroup paddingLeft="2" paddingRight="2" width="100%">
+		<mx:Form width="100%">
+			<mx:FormItem width="100%" label="Audio Language/Dialect">
+				<s:HGroup>
+					
+					<language:LanguageFlag toolTip="{langChanger.visible?'Hide Languages':'Show Languages'}" languageCode="{audio.audio_language}" buttonMode="true" useHandCursor="true" id="langFlag" click="{langChanger.includeInLayout = !langChanger.includeInLayout; langChanger.visible = !langChanger.visible}"/>
+					<language:LanguageDropDown toolTip="Transcript Language"  includeInLayout="false" visible="false" id="langChanger" language="{audio.audio_language}" change="langChanger_changeHandler(event)"/>
+					<language:DialectDropDown allowUnknown="true" allowNonNative="true" id="dd_dialect" selectedLanguageCode="{audio.audio_language}"  dialect="{audio.audio_rec_dia}" change="dd_dialect_changeHandler(event)"/>
+				
+				</s:HGroup>
+			</mx:FormItem>
+			<mx:FormItem width="100%" label="Type/Mood">
+				<s:HGroup width="100%">
+					<audio:AudioTypeDropDown width="200" audioType="{WordSmartConstants.DEFAULT_AUDIO_TYPE}" change="dd_audio_type_changeHandler(event)"  id="dd_audio_type"/>
+					<audio:AudioMoodDropDown width="200" change="dd_mood_changeHandler(event)" mood="{WordSmartConstants.DEFAULT_AUDIO_MOOD}"  id="dd_mood"/>
+				</s:HGroup>
+			</mx:FormItem>
+			<mx:FormItem width="100%" label="Transcript">
+				<s:TextArea change="ta_audio_transcript_changeHandler(event)" id="ta_transcript" text="{audio.audio_transcript}" height="100%" width="100%"/>
+			</mx:FormItem>
+			<mx:FormItem label="Recorder gender">
+				<s:HGroup>
+					<s:DropDownList change="dd_recorder_gender_changeHandler(event)" id="dd_recorder_gender" dataProvider="{genders}" selectedItem="{getItemByKey(genders.source, 'value', audio.audio_rec_gen)}"  width="130"/>
+						<s:Label text="Age"/>
+					<s:TextInput text="{audio.audio_rec_age}" maxChars="10" id="ti_age" change="ti_age_changeHandler(event)"/>
+				</s:HGroup>
+			</mx:FormItem>
+			<mx:FormItem width="100%" label="Copyright">
+				<s:TextInput change="ti_copyright_changeHandler(event)" width="100%" id="ti_copyright" text="{audio.audio_copyright}" >
+				</s:TextInput>
+			</mx:FormItem>
+			<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+				<s:VGroup width="100%" horizontalAlign="right">
+				<buttons:WSIconButton width="80" id="btn_audio_tags" toolTip="Open Tag Editor" icon="{IconLib.TAG_16}" label="Tags" click="btn_audio_tags_clickHandler(event)" visible="{showAudioTagger}"/>
+				<s:Label text="{audio.audio_tags}"  paddingRight="3"/>
+				</s:VGroup>
+			</s:HGroup>
+		</mx:Form>
+		
+	</s:VGroup>
+
+</s:Group>

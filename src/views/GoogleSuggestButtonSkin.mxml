@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- http://blog.flexexamples.com/2010/04/14/setting-a-custom-skin-class-on-a-spark-checkbox-control-in-flex-4/ -->
+<s:SparkSkin name="CustomCheckBoxSkin"
+			 xmlns:fx="http://ns.adobe.com/mxml/2009"
+			 xmlns:s="library://ns.adobe.com/flex/spark"
+			 xmlns:fb="http://ns.adobe.com/flashbuilder/2009"
+			 alpha.disabledStates="0.5" xmlns:mx="library://ns.adobe.com/flex/mx">
+	<!-- states -->
+	<s:states>
+		<s:State name="up" />
+		<s:State name="over" stateGroups="overStates" />
+		<s:State name="down" stateGroups="downStates" />
+		<s:State name="disabled" stateGroups="disabledStates" />
+		<s:State name="upAndSelected" stateGroups="selectedStates" />
+		<s:State name="overAndSelected" stateGroups="overStates, selectedStates" />
+		<s:State name="downAndSelected" stateGroups="downStates, selectedStates" />
+		<s:State name="disabledAndSelected" stateGroups="disabledStates, selectedStates" />
+	</s:states>
+	
+	<fx:Metadata>
+		[HostComponent("spark.components.CheckBox")]
+	</fx:Metadata> 
+	
+	<fx:Script fb:purpose="styling">
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			/* Define the skin elements that should not be colorized. 
+			For button, the graphics are colorized but the label is not. */
+			static private const exclusions:Array = ["labelDisplay"];
+			
+			override public function get colorizeExclusions():Array {
+				return exclusions;
+			}
+			
+			/* Define the symbol fill items that should be colored by the "symbolColor" style. */
+			static private const symbols:Array = [];
+			
+			override public function get symbolItems():Array {
+				return symbols;
+			}
+			
+			override protected function initializationComplete():void {
+				useChromeColor = true;
+				super.initializationComplete();
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Script>
+		<![CDATA[
+			private static const focusExclusions:Array = ["labelDisplay"];
+			
+			override public function get focusSkinExclusions():Array {
+				return focusExclusions;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Group verticalCenter="0" width="100%" height="100%">
+		<mx:Image width="24" height="24" buttonMode="true" alpha.selectedStates="1" alpha="0.5" source="{IconLib.SUGGEST_KEYWORD}"/>
+		
+	</s:Group>
+
+	
+</s:SparkSkin>

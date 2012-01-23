@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx" visible="{model.showPositionInfo || model.showSizeInfo || model.showRotationInfo || showLoading &amp;&amp; this.width &lt; model.width}"  backgroundColor="0" backgroundAlpha="0.5"  height="22" cornerRadius="8">
+	<s:layout>
+		<s:HorizontalLayout  horizontalAlign="center" verticalAlign="middle" paddingRight="5" paddingLeft="5"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.components.dynoSlide.models.SimpleDynoDataModel;
+			
+			import utils.number.roundDecimalToPlace;
+			[Bindable]public var model:SimpleDynoDataModel;
+			[Bindable]public var showLoading:Boolean;
+			[Bindable]public var loadingString:String = '';
+		]]>
+	</fx:Script>
+	
+		<s:HGroup verticalAlign="middle" horizontalAlign="center">
+			<s:Label visible="{model.showSizeInfo}" includeInLayout="{model.showSizeInfo}" text="{'w: '+roundDecimalToPlace(model.width,1)+' - h: '+roundDecimalToPlace(model.height,1)}" fontSize="12" color="0xFFFFFF"/>	
+			<s:Label visible="{model.showPositionInfo}" includeInLayout="{model.showPositionInfo}" text="{'x: '+roundDecimalToPlace(model.x,1)+' - y: '+roundDecimalToPlace(model.y,1)}" fontSize="12" color="0xFFFFFF"/>	
+			<s:Label visible="{showLoading}" includeInLayout="{showLoading}" text="{loadingString}" fontSize="12" color="0xFFFFFF"/>	
+			<s:Label visible="{model.showRotationInfo}" includeInLayout="{model.showRotationInfo}" text="{'rotation: '+ roundDecimalToPlace(model.rotation,1)}" fontSize="12" color="0xFFFFFF"/>	
+		</s:HGroup>
+	
+</s:BorderContainer>

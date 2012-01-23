@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()"  xmlns:dynoSlide="jp.wordsmart.components.dynoSlide.*" xmlns:buttons="views.buttons.*" xmlns:image="views.image.*" xmlns:imageCropper="jp.wordsmart.components.imageCropper.*" xmlns:viewTestHarnesses="views.viewTestHarnesses.*">
+
+	<fx:Script>
+		<![CDATA[
+			import com.noteflight.standingwave3.elements.AudioDescriptor;
+			import com.noteflight.standingwave3.elements.Sample;
+			import com.noteflight.standingwave3.formats.WaveFile;
+			import com.noteflight.standingwave3.output.AudioPlayer;
+			import com.noteflight.standingwave3.performance.AudioPerformer;
+			import com.noteflight.standingwave3.performance.ListPerformance;
+			
+			import jp.wordsmart.events.ImageEvent;
+			
+			import org.bytearray.micrecorder.encoder.WaveEncoder;
+			
+		private function cc():void
+		{}
+		
+			private function play():void
+			{
+			var urlReq:URLRequest = new URLRequest("http://s3.amazonaws.com/wordsmartaudio-tests/1298628018698.mp3");
+			sourceSnd = new Sound();
+			outputSnd = new Sound();
+			sourceSnd.load(urlReq);
+			sourceSnd.addEventListener(Event.COMPLETE, loaded);
+			
+			}
+			
+			
+			private var sourceSnd:Sound;
+			private var outputSnd:Sound;
+			
+			private function loaded(event:Event):void
+			{
+				outputSnd.addEventListener(SampleDataEvent.SAMPLE_DATA, processSound);
+				outputSnd.play();
+			}
+			
+			private function processSound(event:SampleDataEvent):void
+			{
+				var bytes:ByteArray = new ByteArray();
+				sourceSnd.extract(bytes, 4096);
+				event.data.writeBytes(doubleMe(bytes));
+			}
+			
+			private function upOctave(bytes:ByteArray):ByteArray
+			{
+				var returnBytes:ByteArray = new ByteArray();
+				bytes.position = 0;
+				while(bytes.bytesAvailable > 0)
+				{
+					returnBytes.writeFloat(bytes.readFloat());
+					returnBytes.writeFloat(bytes.readFloat());
+					if (bytes.bytesAvailable > 0)
+					{
+						bytes.position += 8;
+					}
+				}
+				
+				return returnBytes;
+			}
+			
+			private function doubleMe(bytes:ByteArray):ByteArray
+			{
+				var returnBytes:ByteArray = new ByteArray();
+				bytes.position = 0;
+				while(bytes.bytesAvailable > 0)
+				{
+					returnBytes.writeByte(bytes.readByte());
+					
+				}
+			 	bytes.position = 0;
+				while(bytes.bytesAvailable > 0)
+				{
+					returnBytes.writeByte(bytes.readByte());
+					
+				}
+				return returnBytes; 
+			}
+		
+			
+			private function stitch():void
+			{
+			
+			//var orig:ByteArray = sourceSnd.extract(orig;
+			//var newBA:ByteArray = src;
+			
+			
+			
+			//newBA.position = newBA.bytesAvailable+1
+			//while(orig.bytesAvailable > 0)
+			//{
+			//	newBA.writeFloat(orig.readFloat());
+				
+			//}
+			/* var sequence:ListPerformance = new ListPerformance()
+			var we:WaveEncoder = new WaveEncoder();
+			var waved:ByteArray = we.encode(src);
+			var src:Sample = WaveFile.createSample(waved);
+			sequence.addSourceAt(0, src);
+			var ap:AudioPerformer = new AudioPerformer(sequence, new AudioDescriptor())
+			var player:AudioPlayer = new AudioPlayer();
+			player.play(ap); */
+			
+			}
+
+			
+
+		]]>
+	</fx:Script>
+
+
+
+	
+	
+	
+<s:HGroup>
+
+
+<s:Button click="play()" label="play"/>
+	<s:Button click="stitch()" label="stitch"/>
+	
+</s:HGroup>
+
+</s:WindowedApplication>

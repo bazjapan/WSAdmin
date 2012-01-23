@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="186" height="170">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			protected function vs_gain_changeHandler(event:Event):void
+			{
+				micRecorder.gain = vs_gain.value;
+			}
+
+			protected function vs_silence_changeHandler(event:Event):void
+			{
+				micRecorder.silenceLevel = vs_silence.value;
+			}
+
+
+			protected function cb_useEchoSuppression_changeHandler(event:Event):void
+			{
+				micRecorder.microphone.setUseEchoSuppression(cb_useEchoSuppression.selected);
+			}
+
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import org.bytearray.micrecorder.MicRecorder;
+			
+			[Bindable]
+			public var micRecorder:MicRecorder;
+		]]>
+	</fx:Script>
+	
+	<s:HGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center" paddingTop="10">
+		<s:VGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+			<s:VSlider value="{micRecorder.gain}" id="vs_gain" change="vs_gain_changeHandler(event)" maximum="100" minimum="0"/>
+			<s:Label text="Gain"/>
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+			<s:VSlider value="{micRecorder.silenceLevel}" id="vs_silence" change="vs_silence_changeHandler(event)" minimum="0" maximum="100"/>
+			<s:Label text="Silence"/>
+		</s:VGroup>
+	</s:HGroup>
+	<s:HGroup width="100%" height="30" verticalAlign="middle" horizontalAlign="center">
+		<s:CheckBox label="Suppress Echo" selected="{micRecorder.microphone.useEchoSuppression}" id="cb_useEchoSuppression" change="cb_useEchoSuppression_changeHandler(event)"/>
+	</s:HGroup>
+</s:Group>

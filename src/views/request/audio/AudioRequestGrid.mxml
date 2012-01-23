@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  minWidth="350" minHeight="350" width="100%" height="100%" creationComplete="cc()">
+	<s:layout>
+		<s:VerticalLayout paddingBottom="3" paddingLeft="2" paddingRight="2" paddingTop="2"/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.AudioEvent;
+			
+			import mx.events.ListEvent;
+			
+			import views.other.LangIconItemRenderer;
+			protected function btn_mark_done_clickHandler(event:MouseEvent):void
+			{
+				if(!seletedRequest)return;
+				
+				seletedRequest.audio_request_fulfilled_by = AppModel.getInstance().signedInContributor.ID;
+				transCon.update_audio_request(seletedRequest,function(evt:ResultEvent):void
+				{
+					loadedRequests.removeItemAt(loadedRequests.getItemIndex(seletedRequest));
+					seletedRequest = null;
+				}); 
+			}
+
+			protected function btn_load_clickHandler(event:MouseEvent):void
+			{
+				var da:WSAudio = getDefaultAudio();
+				da.audio_language = seletedRequest.audio_request_language;
+				da.audio_transcript = seletedRequest.audio_request_transcript;
+				da.audio_mood = seletedRequest.audio_request_mood
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO,da,true));
+			
+			}
+
+
+			
+
+
+			protected function dg_itemClickHandler(event:ListEvent):void
+			{
+				seletedRequest = dg.selectedItem as AudioRequest;
+			}
+
+		]]>
+	</fx:Script>
+
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.utils.jsonhelpers.AudioRequestResultHelper;
+			import de.popforge.audio.output.Audio;
+			import jp.wordsmart.json.controllers.TranslationRequestController;
+			import jp.wordsmart.utils.jsonhelpers.TranslationRequestResultHelper;
+			
+
+			
+			import mx.rpc.events.ResultEvent;
+			
+		]]>
+	</fx:Script>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.utils.language.dialectCodetoLanguageObject;
+			import jp.wordsmart.utils.language.dialectCodeToDialectObject;
+			import jp.wordsmart.dto.AudioRequest;
+			import jp.wordsmart.json.controllers.AudioRequestController;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			import jp.wordsmart.dto.TranslationRequest;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+
+			private var transCon:AudioRequestController = new AudioRequestController(DomainSettings.API_URL);
+			
+			
+		
+			[Bindable]
+			private var loadedRequests:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var seletedRequest:AudioRequest;
+			
+			[Bindable]
+			private var user_lang_dialect_string:String;
+			
+			[Bindable]
+			private var user_langObj:Object;
+			[Bindable]
+			private var user_dialectObj:Object;
+			[Bindable]
+			private var secondLanguages:ArrayCollection
+			
+			
+			[Bindable]
+			private var showSecondLangControls:Boolean;
+			
+			protected function cc():void
+			{
+				user_dialectObj = dialectCodeToDialectObject(AppModel.getInstance().signedInContributor.user_native_dialect_code);
+				user_langObj = dialectCodetoLanguageObject(AppModel.getInstance().signedInContributor.user_native_dialect_code);
+				user_lang_dialect_string = user_langObj["label"]+" ("+user_dialectObj["dialect_label"]+")";
+				
+				
+				var sLangs:Array = AppModel.getInstance().signedInContributor.secondLanguages;
+				
+				if(sLangs.length>0)
+				{
+				var langs:Array = [];
+				for each (var langCode:String in sLangs)
+				{
+					var langObj:Object = languageCodeToLanguageObject(langCode);
+					langs.push(langObj);
+				} 
+				secondLanguages = new ArrayCollection(langs);
+				showSecondLangControls = true;
+				}
+				
+				
+				
+			}
+			private function get_native_requests():void
+			{
+				var lang:String = user_langObj["value"];
+				var dialect:String = user_dialectObj["dialect_code"];
+				transCon.get_native_requests(lang, dialect, function(evt:ResultEvent):void
+				{
+					loadedRequests.source = new AudioRequestResultHelper().convertToArray(evt.result.toString());
+					lb_status.text = "Audio requests for "+languageCodeToLanguageObject(lang)["label"];
+				});
+			}
+			private function getSecondLanguageRequests():void
+			{
+				if(!cbx.selectedItem)return;
+				var lang:String = cbx.selectedItem["value"];
+				transCon.get_second_lang_requests(lang, function(evt:ResultEvent):void
+				{
+					loadedRequests.source = new AudioRequestResultHelper().convertToArray(evt.result.toString());
+					lb_status.text = "Audio requests for "+languageCodeToLanguageObject(lang)["label"];
+				})
+			
+			}
+			
+			private function getDialectLF(item:AudioRequest, column:DataGridColumn):String
+			{
+				var value:String = item.audio_request_dialect;
+				
+				if(!value || value == "")
+				{
+					return "Any";
+				}
+				else
+				{
+					return dialectCodeToDialectObject(value)["dialect_label"];
+				}
+				
+				return "";
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%">
+		
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:HGroup width="100%" verticalAlign="middle">
+			
+			<s:Label id="lb_user_lang_dialect" text="{user_lang_dialect_string}"/>
+				
+			</s:HGroup>
+			<mx:Image buttonMode="true" source="{IconLib.RELOAD}" width="20" height="20" toolTip="Find Requests" click="{get_native_requests()}"/> 
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle" visible="{showSecondLangControls}" includeInLayout="{showSecondLangControls}">
+			<s:DropDownList prompt="Other Languages" includeInLayout="{showSecondLangControls}" width="100%" id="cbx" dataProvider="{secondLanguages}" selectedIndex="0" itemRenderer="views.other.LangIconItemRenderer"/>
+			<mx:Image includeInLayout="{showSecondLangControls}" buttonMode="true" source="{IconLib.RELOAD}" width="20" height="20" toolTip="Find Requests" id="btn_getTransRequests" click="getSecondLanguageRequests()"/> 
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%">
+		<mx:DataGrid dataProvider="{loadedRequests}" width="100%" height="100%" id="dg" itemClick="dg_itemClickHandler(event)">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Date" width="135" dataField="audio_request_date_added"/>
+				<mx:DataGridColumn headerText="Text" width="200" dataField="audio_request_transcript"/>
+				<mx:DataGridColumn headerText="Dialect" width="200" dataField="audio_request_dialect" labelFunction="getDialectLF"/>
+				<mx:DataGridColumn headerText="Mood" width="200" dataField="audio_request_mood"/>
+				<mx:DataGridColumn headerText="Notes" width="200" dataField="audio_request_notes"/>
+				
+			</mx:columns>
+		</mx:DataGrid>
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle" height="36" bottom="0">
+			<s:HGroup paddingLeft="2" width="100%" horizontalAlign="left">
+				<s:Label id="lb_status"/>
+				</s:HGroup> 
+			<s:HGroup width="100%" horizontalAlign="right" paddingRight="12">
+				<mx:Image buttonMode="true" source="{IconLib.MARK_AS_DONE_32}" width="32" height="32"  visible="{seletedRequest != null}" toolTip="Mark Request as Done" id="btn_mark_done" click="btn_mark_done_clickHandler(event)"/>
+				
+				<mx:Image buttonMode="true" source="{IconLib.MICROPHONE_32}" width="32" height="32" visible="{seletedRequest != null}" toolTip="Record Requested Audio" id="btn_load" click="btn_load_clickHandler(event)"/>
+			</s:HGroup>
+		</s:HGroup>
+	</s:VGroup>
+	
+	
+	
+	
+	
+	
+</s:Group>

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="50" creationComplete="cc()">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import mx.controls.Alert;
+			import spark.events.IndexChangeEvent;
+			import mx.events.ItemClickEvent;
+			import utils.string.truncate;
+			import jp.wordsmart.image.providers.WordSmartImageProvider;
+			import jp.wordsmart.image.providers.FlickRImageProvider;
+			import jp.wordsmart.image.providers.YahooImageProvider;
+			import jp.wordsmart.image.providers.BingImageProvider;
+			import jp.wordsmart.image.providers.GoogleImageProvider;
+			import mx.collections.ArrayCollection;
+			import utils.array.getItemByKey;
+			import jp.wordsmart.image.providers.ImageProvider;
+			
+			
+			
+			[Bindable]public var pageNumber:String = "No Search";
+			
+			private var defaultSearchResultNumber:uint = 8;
+			public var currentProvider:Object
+			[Bindable]public var images:ArrayCollection = new ArrayCollection;
+			
+			/* List of available providers */
+			public var providers:Array = [
+				{"label":"Google","icon":IconLib.GOOGLE_IMAGE_SEARCH, "images": [], "lastSearchStartIndex" : 0, "lastSearchTerm" : "", "provider": new GoogleImageProvider},
+				{"label":"Bing","icon":IconLib.BING_IMAGE_SEARCH, "images": [], "lastSearchStartIndex" : 0, "lastSearchTerm" : "", "provider": new BingImageProvider},
+				{"label":"Yahoo","icon":IconLib.YAHOO_IMAGE_SEARCH, "images": [], "lastSearchStartIndex" : 0, "lastSearchTerm" : "", "provider": new YahooImageProvider},
+				{"label":"FlickR", "icon":IconLib.FLICKR_IMAGE_SEARCH, "images": [], "lastSearchStartIndex" : 0, "lastSearchTerm" : "", "provider": new FlickRImageProvider},
+				{"label":"Wordsmart","icon":IconLib.WORDSMART_IMAGE_SEARCH, "images": [],"lastSearchStartIndex" : 0 , "lastSearchTerm" : "", "provider": new WordSmartImageProvider}
+			];
+			
+			
+			
+			protected function cc():void
+			{
+				cb_searchTerms.addEventListener(KeyboardEvent.KEY_DOWN,onKeyDown);
+				currentProvider = getItemByKey(providers,"label", "Google");
+			}
+			[Bindable]
+			public var possibleSearchTerms:ArrayCollection = new ArrayCollection;
+			public function setPossibleSearchTerms(terms:Array):void
+			{
+				possibleSearchTerms.source = terms;
+				if(possibleSearchTerms.length>0)
+				{
+					if(cb_searchTerms.textInput.text == '')
+					{
+						cb_searchTerms.textInput.text = possibleSearchTerms[0].toString();
+					}
+				}
+			}
+			protected function toggle_providers_itemClickHandler(event:ItemClickEvent):void
+			{
+				var provider:Object = getItemByKey(providers,"label", event.item["label"]);
+				currentProvider = provider;
+				images.source = currentProvider["images"];
+				
+				if(currentProvider["lastSearchTerm"] != '')
+				{
+					cb_searchTerms.textInput.text = currentProvider["lastSearchTerm"]
+				}
+				updatePageing();
+			}
+			
+			protected function cb_searchTerms_changeHandler(event:spark.events.IndexChangeEvent):void
+			{
+				currentProvider['lastSearchStartIndex'] = 0;
+				updatePageing();
+			}
+			private function updatePageing():void
+			{
+				btn_pageDown.visible = currentProvider['lastSearchStartIndex'] > 0;
+				btn_pageUP.visible = currentProvider['images']['length'] > 0 && currentProvider['images']['length'] == defaultSearchResultNumber;
+				pageNumber = "Search: "+currentProvider['label']+' : '+truncate(String(currentProvider['lastSearchTerm']),50)+"  Page #: "+calculatePageNumber().toString();
+			}
+			protected function bt_pageUP_clickHandler(event:MouseEvent):void
+			{
+				var term:String = cb_searchTerms.textInput.text;
+				currentProvider['lastSearchStartIndex'] = int(currentProvider['lastSearchStartIndex'])+int(currentProvider['images']['length']);;
+				searchForImages(term , currentProvider['lastSearchStartIndex']);
+			}
+			protected function bt_pageDown_clickHandler(event:MouseEvent):void
+			{
+				var term:String = cb_searchTerms.textInput.text;
+				currentProvider['lastSearchStartIndex'] = int(currentProvider['lastSearchStartIndex'])-int(currentProvider['images']['length']);;
+				searchForImages(term , currentProvider['lastSearchStartIndex']);
+			}
+			private function onKeyDown(event:KeyboardEvent):void
+			{
+				if(event.charCode == 13)
+				{
+					if(cb_searchTerms.textInput.text != '')
+					{
+						searchForImages(cb_searchTerms.textInput.text, currentProvider['lastSearchStartIndex']);
+					}
+				}
+			}
+			private function calculatePageNumber():uint
+			{
+				if(currentProvider['images']['length']== 0)return 0;
+				if(uint(currentProvider['lastSearchStartIndex']) == 0)return 1;
+				return (uint(currentProvider['lastSearchStartIndex']) / defaultSearchResultNumber)+1;
+			}
+			protected function btn_search_clickHandler(event:MouseEvent):void
+			{	
+				var term:String = cb_searchTerms.textInput.text;
+				if(term == '')return;
+				currentProvider['lastSearchStartIndex'] = 0;
+				searchForImages(term , currentProvider['lastSearchStartIndex']);
+			}
+			protected function searchForImages(searchTerm:String, startIndex:int):void
+			{
+				var exact:Boolean = false;
+				images.removeAll();
+				var provider:ImageProvider = currentProvider["provider"] as ImageProvider;
+				provider.defaultNumberOfResults = defaultSearchResultNumber;
+				currentProvider["lastSearchTerm"] = searchTerm;
+				provider.searchForImages(searchTerm,startIndex,function(returnedImages:Array, searchTerm:String):void
+				{
+					currentProvider["images"] = returnedImages;
+					images.source = returnedImages;
+					addSearchTermToHistory(searchTerm);
+					updatePageing();
+				},
+					function(response:String):void
+					{
+						if(response == ImageProvider.ERROR_SEARCH_OUT_OF_RANGE)
+						{
+							Alert.show(currentProvider['label']+ ' has no more results.', "Search Error");
+							currentProvider['lastSearchStartIndex'] = int(currentProvider['lastSearchStartIndex'])-defaultSearchResultNumber;
+							updatePageing()
+						}
+						else
+						{
+							Alert.show("Could not search for  images, please try again", "Search Error");
+						}
+					},
+					exact);
+			}
+			private function addSearchTermToHistory(searchTerm:String):void
+			{
+				if(!utils.array.contains(possibleSearchTerms.source,searchTerm))
+				{
+					possibleSearchTerms.addItem(searchTerm);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	<s:HGroup width="100%">
+		<s:HGroup verticalAlign="middle"  width="100%" >
+			<mx:Image buttonMode="true" source="{IconLib.CANCEL_18}" toolTip="Clear Searches" click="{possibleSearchTerms.removeAll(); cb_searchTerms.textInput.text = ''}"/>
+			<s:ComboBox width="100%" dataProvider="{possibleSearchTerms}" id="cb_searchTerms" maxChars="100" change="cb_searchTerms_changeHandler(event)">
+			</s:ComboBox>
+			<mx:Image buttonMode="true" source="{IconLib.ZOOM_16}" toolTip="Search Provider for Images" id="btn_search"  enabled="{cb_searchTerms.textInput.text || cb_searchTerms.textInput.text != ''}" click="btn_search_clickHandler(event)"/>
+			<s:HGroup>
+				<mx:Image buttonMode="true" source="{IconLib.ARROW_LEFT_16}" id="btn_pageDown" click="bt_pageDown_clickHandler(event)" visible="false" toolTip="Go to Next Results"/>
+				<mx:Image buttonMode="true" source="{IconLib.ARROW_RIGHT_16}" id="btn_pageUP" click="bt_pageUP_clickHandler(event)" visible="false" toolTip="Go to Previous Results"/>
+			</s:HGroup>
+		</s:HGroup>
+	</s:HGroup>
+	
+	
+	<s:HGroup width="100%"  verticalAlign="middle">
+		<mx:ToggleButtonBar id="toggle_providers"
+							horizontalGap="5"
+							itemClick="toggle_providers_itemClickHandler(event)"
+							toggleOnClick="true"
+							selectedIndex="0" dataProvider="{providers}" labelField="label">
+		</mx:ToggleButtonBar>
+		<s:HGroup  horizontalAlign="right" width="100%" verticalAlign="middle">
+			<mx:Image toolTip="Clear list" buttonMode="true" source="{IconLib.CANCEL_18}"  visible="{images.length &gt; 0}" click="{images.source = [];}"/>
+		</s:HGroup>
+	</s:HGroup>
+</s:Group>

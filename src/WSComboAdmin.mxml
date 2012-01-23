@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			protected function reove_combo_clickHandler(event:MouseEvent):void
+			{
+				var items:Array = dg_combos.selectedItems;
+				for each (var item:Object in items)
+				{
+					all_combos.removeItemAt(all_combos.getItemIndex(item))
+				}
+				
+			}
+		]]>
+	</fx:Script>
+
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.components.quizmatic.QMAnswer;
+			import jp.wordsmart.components.quizmatic.QMQuestion;
+			import jp.wordsmart.components.quizmatic.print.makeHTMLQuestionFragment;
+			import jp.wordsmart.components.quizmatic.print.makePrintableQuestion;
+			import jp.wordsmart.components.quizmatic.utils.replaceLetters;
+			import jp.wordsmart.components.quizmatic.utils.shuffleQuestionAnswers;
+			import jp.wordsmart.utils.audio.SaveFileToDiskFromRemoteURL;
+			import jp.wordsmart.utils.download.downloadToFileFromURL;
+			
+			import utils.array.randomize;
+			import utils.number.addLeadingZero;
+			import utils.string.countCharOccurences;
+			import utils.text.newLine;
+			protected function make_test_clickHandler(event:MouseEvent):void
+			{//temp
+				number_of_questions = all_combos.length<ns_num_questions.value?all_combos.length:ns_num_questions.value;
+				
+				var question_holders:Array = [];
+				//randomize combos;
+				var all_questions:Array = randomize(all_combos.source);
+				//for each combo make a question
+				for (var i:int = 0; i < number_of_questions; i++)
+				{
+					var obj:Object = all_questions[i];
+					//make a question holder
+					var questionHolder:QMQuestion = new QMQuestion;
+					questionHolder.text = obj["keyword_text"];
+					questionHolder.aurl = obj["audio_location"];
+					questionHolder.iurl = obj["image_url"];
+					questionHolder.combo_ID = obj["combo_ID"];
+					//create possible answers
+					var answers:Array = getRandomAnswers(obj);
+					for (var j:int = 0; j < answers.length; j++)
+						{
+							var ans:Object = answers[j];
+							var qma:QMAnswer = new QMAnswer;
+							qma.text = ans["keyword_text"];
+							qma.aurl = ans["audio_location"];
+							qma.iurl = ans["image_url"];
+							qma.correct = 0;
+							questionHolder.answers.push(qma);
+						}
+					//put in correct answer;
+					var correctAnswer:QMAnswer = new QMAnswer;
+					correctAnswer.text = obj["keyword_text"];
+					correctAnswer.aurl = obj["audio_location"];
+					correctAnswer.iurl = obj["image_url"];
+					correctAnswer.correct = 1;
+					questionHolder.answers.push(correctAnswer);
+					
+					//shuffle answers
+					shuffleQuestionAnswers(questionHolder);
+					//mark the questions order
+					questionHolder.order = i+1;
+					questionHolder.html = makeHTMLQuestionFragment(questionHolder, "Listen and choose the best answer.");
+					output.text+=(questionHolder.html+newLine());
+					question_holders.push(questionHolder);
+				}
+				
+				
+				function getRandomAnswers(answer:Object):Array
+				{
+					if(all_questions.length<2)
+					{
+						var blank_answers:Array;
+						for (var i:int = 0; i < number_of_answers-1; i++)
+						{
+							var na:Object = new Object;
+							blank_answers.push(na);
+						}
+						return blank_answers;
+					}
+					var randomized:Array = randomize(all_questions);
+					var answers:Array = [];
+					for (var j:int = 0; j < randomized.length; j++)
+					{
+						var ans:Object = randomized[j];
+						if(ans['combo_ID']!=answer['combo_ID'])
+						{
+							answers.push(ans);
+							if(answers.length == number_of_answers-1)
+							{
+								break;
+							}
+						}
+					}
+					return answers;
+				}
+				
+				this.question_holders.source = question_holders;
+				trace(question_holders.length);
+			}
+			//------------------------------------------------------
+			protected function make_test2():void
+			{//temp
+				number_of_questions = all_combos.length<ns_num_questions.value?all_combos.length:ns_num_questions.value;
+				
+				var question_holders:Array = [];
+				//randomize combos;
+				var all_questions:Array = randomize(all_combos.source);
+				//for each combo make a question
+				for (var i:int = 0; i < number_of_questions; i++)
+				{
+					var obj:Object = all_questions[i];
+					//make a question holder
+					var questionHolder:QMQuestion = new QMQuestion;
+					questionHolder.text = obj["keyword_text"];
+					questionHolder.aurl = obj["audio_location"];
+					questionHolder.iurl = obj["image_url"];
+					questionHolder.combo_ID = obj["combo_ID"];
+					//create possible answers
+					var answers:Array = [];
+					
+					var correctAnswer:QMAnswer = new QMAnswer;
+					correctAnswer.text = add_blanks(obj["keyword_text"]);
+					correctAnswer.text = addPadding(correctAnswer.text);
+					correctAnswer.aurl = obj["audio_location"];
+					correctAnswer.iurl = obj["image_url"];
+					correctAnswer.correct = 1;
+					questionHolder.answers.push(correctAnswer);
+					
+					
+					//mark the questions order
+					questionHolder.order = i+1;
+					questionHolder.html = makeHTMLQuestionFragment(questionHolder, "Listen and fill in the blanks.");
+					output.text+=(questionHolder.html+newLine());
+					question_holders.push(questionHolder);
+				}
+				
+				function add_blanks(textToChange:String):String
+				{
+					var replaceWith:String = "_";
+					var letters_to_show:int = 1;
+					var totalChars:int = textToChange.length;
+					var numberOfSpaces:int = countCharOccurences(" ",textToChange);
+					var totalChangable:int = totalChars-numberOfSpaces;
+					var totalToChange:int = totalChangable-letters_to_show;
+					
+					return replaceLetters(textToChange,totalToChange,replaceWith);
+				}
+				function addPadding(theText:String, toPad:String = "_"):String
+				{
+					var len:int = theText.length;
+					var theChars:Array = [];
+					for (var i:int = 0; i < len; i++)
+					{
+					var theChar:String = theText.charAt(i);
+					if(theChar == toPad)
+					{
+					if(prevCharIsSpace())
+					{
+						theChars.push(toPad);
+						theChars.push(" ");
+						
+					}
+					else
+					{
+						theChars.push(" ");
+						theChars.push(toPad);
+						theChars.push(" ");
+					}
+					}
+					else
+					{
+						theChars.push(theChar);
+					}
+					}
+					function prevCharIsSpace():Boolean
+					{
+						if(theChars.length == 0)return true;
+						return theChars[theChars.length-1] == " ";
+					}
+					
+					return theChars.join(" ");
+				}
+				
+				this.question_holders.source = question_holders;
+				trace(question_holders.length);
+			}
+			
+			private var local_path:String = "qm-temp/";
+			private var full_path:String = "C:\\Users\\Jan\\desktop\\qm-temp\\repeaters\\";
+			private var numbers_path:String = "C:\\Users\\Jan\\desktop\\qm-temp\\repeaters\\numbers\\";
+			private var instructions1:String = full_path+"fillin.mp3";//"http://s3.amazonaws.com/wsaudio/wsa-2-1309240471294.mp3";
+			//private var instructions1:String = full_path+"instruction1.mp3";//"http://s3.amazonaws.com/wsaudio/wsa-2-1309240471294.mp3";
+			private var instructions2:String = full_path+"instruction2.mp3";//"http://s3.amazonaws.com/wsaudio/wsa-2-1309240790828.mp3";
+			private var space:String = full_path+"space.mp3";//"http://s3.amazonaws.com/wsaudio/1309251591424.mp3"; 
+			private var newQuestionSound:String = full_path+"question-sound2.mp3";//"http://s3.amazonaws.com/wsaudio/1309249103885.mp3";
+			private var lets_begin:String = full_path+"instruction3.mp3";//"http://s3.amazonaws.com/wsaudio/wsa-2-1309250198399.mp3 ";
+			
+			private var audio_download_url_list:Array;
+			private var dl_counter:int = 0;
+			private var fileSaver:SaveFileToDiskFromRemoteURL;
+			
+			private var file_type:String = ".mp3";
+			protected function download_audio_clickHandler(event:MouseEvent):void
+			{
+				var int1:Object = new Object;
+				int1.url = instructions1;
+				int1.title = "0-instruction1"
+				int1.repeat = false;
+				var int2:Object = new Object;
+				int2.url = instructions2;
+				int2.title = "0-instruction2"
+				int2.repeat = false;
+				var lb:Object = new Object;
+				lb.url = lets_begin;
+				lb.title = "0-instruction3"
+				lb.repeat = false;
+				
+				
+				audio_download_url_list = [int1, int2,lb];
+				var qNumber:int = 1;
+				for each (var q:QMQuestion in question_holders)
+				{
+					audio_download_url_list.push(getStarterAudio(qNumber.toString()));
+					audio_download_url_list.push(getNumberAudio(qNumber));
+					audio_download_url_list.push(getSpacerAudio(qNumber.toString()));
+					for (var i:int = 0; i < ns_audio_repeat.value; i++)
+					{
+					var audio:Object = new Object;
+					audio.url = q.aurl;
+					audio.repeat = i>0?true:false;
+					var repeat_number:int = i+1;
+					audio.title = qNumber+"-"+repeat_number;
+					audio_download_url_list.push(audio);
+					audio_download_url_list.push(getSpacerAudio(audio.title));
+					}
+					qNumber++;
+					
+				}
+				fileSaver = new SaveFileToDiskFromRemoteURL();
+				dl_counter = 0;
+				beginDownload();
+			}
+			private function getSpacerAudio(qNumber:String):Object
+			{
+				var s:Object = new Object;
+				s.url = space;
+				s.title = qNumber+"-space";
+				s.repeat = false;
+				return s;
+			}
+			private function getStarterAudio(qNumber:String):Object
+			{
+				var s:Object = new Object;
+				s.url = newQuestionSound;
+				s.title = qNumber+"- chime-"+qNumber;
+				s.repeat = false;
+				return s;
+			}
+			private function getNumberAudio(num:int):Object
+			{
+				var s:Object = new Object;
+				s.url = numbers_path+numbers[num]+".mp3";
+				s.title = num+"- question-"+num;
+				s.repeat = false;
+				return s;
+			}
+			private function beginDownload():void
+			{
+				if(dl_counter>=audio_download_url_list.length){trace("All downloads complete"); return;}
+				var audio:Object = audio_download_url_list[dl_counter];
+				var url:String = audio.url;
+				var prefix:String = addLeadingZero(dl_counter);
+				if(prefix.length<3){prefix = "0"+prefix};
+				var file_name:String = prefix+"-"+audio.title+file_type;
+				fileSaver.saveToDisk(url,file_name,local_path,
+					function(f:File):void
+					{
+					dl_counter++;
+					var timer:Timer = new Timer(2000, 1);
+					timer.addEventListener(TimerEvent.TIMER_COMPLETE, function(te:TimerEvent):void{
+					beginDownload();//repeat
+					});
+						
+					timer.start();
+					});
+				
+				
+			}
+			
+		
+		]]>
+	</fx:Script>
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			[Bindable]public var question_type:String ="MultiChoice-AudioQuestion-with-TextAnswers";
+			[Bindable]public var number_of_answers:int = 4;
+			[Bindable]public var number_of_questions:Number;
+			[Bindable]public var question_holders:ArrayCollection = new ArrayCollection;
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.utils.audio.playAudioFromURL;
+			import com.pbsmediatech.json.utils.JSONResultHelper2;
+			import com.pbsmediatech.json.utils.extractResult;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.dto.WSCombo;
+			import jp.wordsmart.json.controllers.WSComboController;
+			import jp.wordsmart.utils.popMessage;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			[Bindable]public var selected_combo:Object;
+			[Bindable]public var all_combos:ArrayCollection = new ArrayCollection;
+			private var controller:WSComboController = new WSComboController(DomainSettings.API_URL);
+			
+			private var numbers:Array = ["zero","one","two","three","four","five","six","seven","eight","nine","ten",
+				"eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty",
+				"twenty one","twenty two","twenty three","twenty four","twenty five","twenty six","twenty seven","twenty eight","twenty nine","thirty"]
+			
+			private function cc():void
+			{
+			
+								
+							
+			}
+			private function get_all_combos():void
+			{
+				popMessage("Getting Combos");
+				controller.get_all_combo_view({}, function(evt:ResultEvent):void
+				{
+					var results:Array = new JSONResultHelper2().resultToArray(extractResult(evt));
+					all_combos.source = results;
+					popMessage(results.length+" Combos loaded", 1000);
+					
+				});
+			}
+
+			protected function dg_combos_changeHandler(event:ListEvent):void
+			{
+				selected_combo = dg_combos.selectedItem;
+			}
+			private function playAudio():void
+			{
+			if(selected_combo == null)return;
+			playAudioFromURL(selected_combo['audio_location'])		
+			}
+			
+			protected function get_combos_clickHandler(event:MouseEvent):void
+			{
+				get_all_combos();
+			}
+
+		]]>
+	</fx:Script>
+	
+	<mx:VDividedBox width="100%" height="100%">
+		
+	<mx:DataGrid allowMultipleSelection="true" width="100%" height="100%" dataProvider="{all_combos}" id="dg_combos" change="dg_combos_changeHandler(event)">
+		
+	</mx:DataGrid>
+		<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+        		<s:HGroup width="100%" horizontalAlign="left">
+					<s:Button id="reove_combo" label="Remove Combo" click="reove_combo_clickHandler(event)"/>
+						
+        		</s:HGroup>	
+        		<s:HGroup width="100%" horizontalAlign="right">
+					<s:Button id="get_combos" label="Get" click="get_combos_clickHandler(event)"/>
+        			<s:Label text="{'Total: '+all_combos.length}"/>
+        		</s:HGroup>	
+        	</s:HGroup>	
+        
+	
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" >
+			<s:Button label="make" id="make_test" click="make_test_clickHandler(event)" toolTip="Make Multiple Choice"/>
+			<s:Button label="make2" id="make_2" click="make_test2()" toolTip="Make fill word blank test"/>
+			<s:HGroup>
+				<s:Label text="Audio Repeat"/>
+			<s:NumericStepper id="ns_audio_repeat" value="1"/>
+			</s:HGroup>
+			<s:HGroup>
+				<s:Label text="Num Questions"/>
+			<s:NumericStepper id="ns_num_questions" value="20" maximum="30"/>
+			</s:HGroup>
+			<s:Button enabled="{question_holders.length &gt; 0}" label="Download Audio" id="download_audio" click="download_audio_clickHandler(event)"/>
+		</s:HGroup>
+			<s:HGroup>
+				<s:Label text="Keyword Text"/>
+				<s:Label text="{selected_combo['keyword_text']}"/>
+			</s:HGroup>
+		<s:HGroup>
+			<mx:Image width="160" height="120" source="{selected_combo['image_url']}"/>
+			<s:HGroup width="160" height="120"  verticalAlign="middle" horizontalAlign="center">
+				<buttons:WSIconButton icon="{IconLib.PLAY_16}" label="Play" enabled="{selected_combo != null}" click="playAudio()"/>
+			</s:HGroup>
+		</s:HGroup>
+	<s:TextArea id="output" width="100%" height="100%">
+		
+	</s:TextArea>
+			</s:VGroup>
+	
+</mx:VDividedBox>
+</s:WindowedApplication>

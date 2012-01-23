@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="290" creationComplete="cc()" xmlns:language="views.language.*">
+	<s:layout>
+		<s:VerticalLayout horizontalAlign="center" verticalAlign="middle"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.utils.language.dialectCodetoLanguageObject;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import utils.array.merge;
+			import utils.array.removeDuplicates;
+			
+			import views.keyword.ExistingKeywordRenderer;
+			
+			[Bindable]
+			public var contributor:Contributer;
+			public var showLanguageChoices:Function;//params array of excludes + callback
+			
+			private var base_language:Object;
+			[Bindable]
+			private var default_translations_lang_objs:ArrayCollection;
+			
+			private function cc():void
+			{
+				dg_user_default_keyword_languages.addEventListener("REMOVE_ITEM_EVENT",onREMOVE_ITEM_EVENT);
+			}
+			
+			[Bindable]
+			public var isValid:Boolean;
+			
+			private function checkIsValid():Boolean
+			{
+				return contributor.user_default_keyword_languages != null;
+			}
+			
+			private function onREMOVE_ITEM_EVENT(event:Event):void
+			{
+				var index:int = dg_user_default_keyword_languages.getChildIndex(event.target as DisplayObject);
+				default_translations_lang_objs.removeItemAt(index);
+			}
+			
+			public function setContributer(cont:Contributer):void
+			{
+				default_translations_lang_objs = new ArrayCollection;
+				contributor = cont;
+				if(!isNaN(contributor.ID))
+				{
+					dd_languages.language = cont.getBaseLanguage();
+					base_language = dd_languages.selectedItem;
+					for each (var str:String in contributor.getDefaultKeywordTranslationLanguages())
+					{
+						var lang:Object = languageCodeToLanguageObject(str);
+						default_translations_lang_objs.addItem(lang);
+						
+					}
+					
+					
+				}
+				isValid = checkIsValid();
+			}
+			
+			
+			
+			
+			protected function dd_languages_changeHandler(event:spark.events.IndexChangeEvent):void
+			{
+				base_language = dd_languages.selectedItem;
+				removeMatchingTranslation(base_language["value"]);
+			}
+			
+			
+			private function verticalize(array:Array, param:String):Array
+			{
+				var vertical:Array = [];
+				for each (var obj:Object in array)
+				{
+					vertical.push(obj[param]);
+				}
+				return vertical
+			}
+			private function removeMatchingTranslation(lang_code:String):void
+			{
+				var counter:int;
+				for each (var obj:Object in default_translations_lang_objs)
+				{
+					if(obj["value"] == lang_code)
+					{
+						default_translations_lang_objs.removeItemAt(counter);
+						break;
+					}
+					counter++;
+				}
+				
+			}
+			
+			
+			protected function btn_add_lang_clickHandler(event:MouseEvent):void
+			{
+				var excludes:Array = verticalize(default_translations_lang_objs.source, "value");
+				excludes.push(base_language["value"]);
+				showLanguageChoices(excludes,function(obj:Object):void
+				{
+					default_translations_lang_objs.addItem(obj);
+				})
+			}
+			
+			
+			
+			public function saveContributer():void
+			{
+				if(!dd_languages.selectedItem){return};
+				var keyword_languages:Array = [];
+				var baseLangAsArray:Array = [dd_languages.getSelectedLangCode()]
+				var translationCodes:Array = verticalize(default_translations_lang_objs.source,"value");
+				var merged:Array = merge([baseLangAsArray, translationCodes]);
+				var dupesRemoved:Array = removeDuplicates(merged);
+				
+				contributor.user_default_keyword_languages = dupesRemoved.toString();
+				trace(contributor.user_default_keyword_languages)
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Form width="100%" height="100%">
+		<s:HGroup verticalAlign="middle" width="100%" paddingBottom="10">
+			<s:Label text="Application Settings" fontWeight="bold" width="100%"/>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<mx:Image source="{IconLib.MARK_AS_DONE_16}" width="16" height="16" visible="{isValid}"/>
+			</s:HGroup>
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="100%" paddingBottom="5">
+			<s:Label text="Keyword Base Language" fontWeight="bold" width="100%"/>
+			
+		</s:HGroup>
+		<mx:FormItem>
+			<s:HGroup>
+				<language:LanguageDropDown id="dd_languages" change="dd_languages_changeHandler(event)" prompt="Select Language" /> 
+			</s:HGroup>
+		</mx:FormItem>
+		
+		
+		
+		<s:VGroup width="100%" paddingTop="10" visible="{dd_languages.selectedItem}">
+			<s:HGroup width="100%" verticalAlign="middle" paddingBottom="5">
+				<s:Label text="Default Translations" width="100%" fontWeight="bold"/>	
+				<s:HGroup width="100%" horizontalAlign="right">
+					<mx:Image width="16" height="16" buttonMode="true" id="btn_add_lang" click="btn_add_lang_clickHandler(event)" source="{IconLib.ADD_16}" toolTip="Add Language"/>	
+				</s:HGroup>
+			</s:HGroup>
+			
+			<mx:FormItem width="100%">
+				
+				<s:Scroller width="100%" height="145">
+					
+					<s:DataGroup id="dg_user_default_keyword_languages" width="100%" dataProvider="{default_translations_lang_objs}" itemRenderer="views.other.DeletableItemRenderer">
+						<s:layout>
+							<s:VerticalLayout gap="1" />
+						</s:layout>
+					</s:DataGroup>
+					
+				</s:Scroller>
+			</mx:FormItem>	
+		</s:VGroup>
+		
+		
+		
+	</mx:Form>
+</s:Group>

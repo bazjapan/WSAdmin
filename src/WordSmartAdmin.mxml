@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" xmlns:user="views.user.*" xmlns:buttons="views.buttons.*" xmlns:keyword="views.keyword.*">
+	<s:layout>
+		<s:VerticalLayout />
+	</s:layout>
+	<fx:Style source="css/test.css"/>
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		@namespace keyword "views.keyword.*";
+		@namespace views "views.*";
+		@namespace language "views.language.*";
+		@namespace user "views.user.*";
+		@namespace buttons "views.buttons.*";
+		
+		mx|ToolTip {
+			backgroundAlpha: 1.0;
+			backgroundColor: black;
+			color: white;
+			cornerRadius: 0;
+			fontSize: 14;
+		}
+	</fx:Style>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.app.AppAudioController;
+			import jp.wordsmart.app.AppImageController;
+			import jp.wordsmart.app.AppKeywordController;
+			import jp.wordsmart.app.AppUserController;
+			import jp.wordsmart.assets.IconLib;
+			
+			import spark.components.Application;
+			
+			//controllers
+			private var appUserController:AppUserController = new AppUserController(Application(this));
+			private var appKeywordController:AppKeywordController = new AppKeywordController(Application(this));
+			private var appAudioController:AppAudioController = new AppAudioController(Application(this));
+			private var appImageController:AppImageController = new AppImageController(Application(this));
+			
+			private function cc():void
+			{
+				currentState = "login";
+				maximize();
+				
+			}
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="disabled"/>
+		<s:State name="login"/>
+		<s:State name="start"/>
+		<s:State name="keywordAdmin"/>
+	</s:states>
+	
+<user:RegistrationLogin includeIn="login" width="100%" height="100%">
+	
+</user:RegistrationLogin>
+<s:VGroup includeIn="start" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+	<mx:Image buttonMode="true" source="{IconLib.KEYWORD_LARGE}" click="{currentState = 'keywordAdmin'}" />
+</s:VGroup>	
+<s:VGroup includeIn="keywordAdmin" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+<keyword:KeywordAdmin width="100%" height="100%">
+	
+</keyword:KeywordAdmin>
+</s:VGroup>	
+	
+</s:WindowedApplication>

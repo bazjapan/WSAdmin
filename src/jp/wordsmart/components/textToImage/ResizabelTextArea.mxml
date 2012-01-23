@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  width="{model.width}" height="{model.height}" 
+		 x="{model.x}" y="{model.y}"		 
+		 xmlns:example="com.roguedevelopment.objecthandles.example.*"
+		 rotation="{model.rotation}" xmlns:components="jp.wordsmart.components.*"
+		  creationComplete="cc()" xmlns:textToImage="jp.wordsmart.components.textToImage.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<textToImage:TextDataModel id="model"/>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import spark.events.TextOperationEvent;
+			
+			[Bindable]
+			public var fontSize:int = 30;
+			[Bindable]
+			public var bgColor:uint;
+			[Bindable]
+			public var textColor:uint;
+			[Bindable]
+			public var bgAlpha:Number =1;
+			[Bindable]
+			public var textAlpha:Number =1;
+			
+			private function cc():void
+			{
+				
+			}
+			public function increaseTextSize():void 
+			{
+				fontSize=fontSize+2;
+				//txt.setStyle("fontSize", fs);
+			}
+			public function decreaseTextSize():void 
+			{
+				if(fontSize<10)return;
+				fontSize=fontSize-2;
+				//txt.setStyle("fontSize", fs);
+			}
+			public function setBackgroundColor(bgc:int):void
+			{
+				bgColor = bgc;
+			}
+			
+			public function setBackgroundAlpha(alpha:Number):void
+			{
+				bgAlpha = alpha;
+			}
+			public function setTextAlpha(alpha:Number):void
+			{
+				textAlpha = alpha;
+			}
+				
+
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:TextArea id="txt" width="{width}" height="{height}" fontSize="{fontSize}" textAlpha="{textAlpha}"  text="Text"
+				borderVisible="false" contentBackgroundColor="{bgColor}" contentBackgroundAlpha="{bgAlpha}" color="{textColor}" focusAlpha="0">
+		
+	</s:TextArea>
+</s:Group>

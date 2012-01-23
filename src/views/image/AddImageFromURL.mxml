@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%" xmlns:buttons="views.buttons.*" xmlns:audio="views.audio.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.utils.audio.mp3.MP3InfoLoader;
+			import jp.wordsmart.utils.download.downloadToFileFromURL;
+			import jp.wordsmart.utils.popMessage;
+			import jp.wordsmart.utils.upload.uploadAudioToWordSmart;
+			
+			import mx.controls.Alert;
+			
+			import spark.events.TextOperationEvent;
+			
+			import utils.date.now;
+			import utils.timestamp.dateToTimeStampUTC;
+			import utils.validation.isURL;
+			
+			public var registerFunc:Function;
+			public var showTagger:Function;
+			public var showProgressFunc:Function;
+			public var hideProgressFunc:Function;
+			
+			
+			[Bindable]
+			private var startText:String = "Please type jpeg or png URL here.";
+			
+			[Bindable]
+			public var audio:WSAudio;
+			
+			[Bindable]
+			private var canQueue:Boolean;//entered url is valid
+			
+			[Bindable]
+			private var canSave:Boolean;//mp3 url is verified and WSAudio fields are sufficient; 
+			
+			[Bindable]
+			private var canDownload:Boolean;//mp3 url is verified
+			
+			
+			
+			private function cc():void
+			{
+				
+				//detailsForm.showAudioTagger = showTagger;
+			}
+			
+			protected function ti_url_clickHandler(event:MouseEvent):void
+			{
+				if(ti_url.text == startText)
+				{
+					ti_url.text = "";
+				}
+			}
+			
+			protected function verifyURL(event:MouseEvent):void
+			{
+				canQueue = false;
+				
+			}
+			
+			protected function ti_url_changeHandler(event:TextOperationEvent):void
+			{
+				canDownload = false;
+				canSave = false;
+				canQueue = isURL(ti_url.text);//if url is good allow to queue;
+			}	
+			protected function addImageToRemote():void
+			{
+				//fill ya boots
+				downloadToFileFromURL(ti_url.text,
+					function(bytes:ByteArray):void
+					{
+						hideProgressFunc();
+						uploadAudioToWordSmart(bytes,
+							function(uploadURL:String):void
+							{
+								//prepare audio
+								audio.audio_orig_url = audioPlayer.audioURL;
+								audio.audio_size = bytes.length.toString();
+								audio.audio_location = uploadURL;
+								audio.isLocal = 1;
+								audio.audio_mime_type = "audio/mpeg";
+								audio.date_added = dateToTimeStampUTC(now());
+								
+								registerFunc(audio,function(audioWithID:WSAudio):void
+								{
+									canSave = false;
+									hideProgressFunc();
+									doRegisterComplete(audio);
+								});
+							},
+							function(perc:Number):void
+							{
+								showProgressFunc("Processing File",perc);
+							},
+							function()
+							{
+								Alert.show("Unable to Upload Audio", "Upload Error");
+							});
+					},
+					function(perc:Number):void
+					{
+						showProgressFunc("Processing File",perc);
+					},
+					function():void
+					{
+						hideProgressFunc();
+						Alert.show("Unable to Download Audio", "Upload Error");
+					});
+				
+			}
+			private function onEVENT_DO_DOWNLOAD(event:Event):void
+			{
+				
+			}
+			protected function btn_new_clickHandler(event:MouseEvent):void
+			{
+				audio.audio_tags = "";
+				ti_url.text = startText;
+				btn_new.visible = false;
+			}
+			
+			private function doRegisterComplete(audio:WSAudio):void
+			{
+				popMessage("Audio Added",2000,24,function():void
+				{
+					trace("popmessage closed");
+					ti_url.text = "";
+				}
+				)
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" paddingLeft="3" paddingRight="3">
+			<s:TextInput toolTip="Type URL of MP3 File to Add" width="100%" id="ti_url" click="ti_url_clickHandler(event)" change="ti_url_changeHandler(event)" text="{startText}" />
+			<buttons:WSIconButton width="100" visible="{canQueue}" label="Queue Audio" icon="{IconLib.TARGET_16}" id="btn_verifyURL" click="verifyURL(event)" toolTip="Load Audio from URL"/>
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%" verticalAlign="top">
+			<audio:MiniAudioPlayer2 id="audioPlayer" useStealthyRequests="true" status_text="{''}" allowDownload="true"/>
+		</s:HGroup>
+		<s:VGroup width="100%" height="100%" >
+			<audio:AudioDetailsForm id="detailsForm" audio="{audio}" width="100%" height="100%">
+				
+			</audio:AudioDetailsForm>
+		</s:VGroup>
+		
+		<s:HGroup id="hg_controls" height="34" width="100%" paddingLeft="2" paddingRight="2">
+			<s:HGroup width="100%" horizontalAlign="left">
+				<buttons:NewButton  id="btn_new" toolTip="New Audio From URL" click="btn_new_clickHandler(event)" visible="false"/>
+			</s:HGroup>	
+			<s:HGroup width="100%" height="100%">
+			</s:HGroup>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<buttons:SaveButton label="Add to WordSmart" toolTip="Add Image" width="140" click="addImageToRemote()" visible="{canSave}" />
+			</s:HGroup>	
+		</s:HGroup>	
+		
+	</s:VGroup>
+</s:Group>

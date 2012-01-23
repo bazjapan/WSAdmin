@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" height="110" creationComplete="cc(event)">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.events.SlideEvent;
+			
+			import mx.events.FlexEvent;
+			[Bindable]public var slide:WSImage;
+			
+			override public function set data(value:Object):void
+			{
+			super.data = value;
+			slide = value as WSImage;
+			}
+
+			protected function cc(event:FlexEvent):void
+			{
+				systemManager.addEventListener(SlideEvent.EVENT_SLIDE_UPDATED,onEVENT_SLIDE_UPDATED);
+			}
+
+			private function onEVENT_SLIDE_UPDATED(event:SlideEvent):void
+			{
+				if(event.slide.image_ID != slide.image_ID){return};
+				img.source = "";
+				img.source = slide.image_url;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:HGroup width="100%" height="100%" paddingLeft="7" paddingTop="3" verticalAlign="middle" paddingRight="5">
+		<s:VGroup height="100%">
+			<mx:Image id="img" source="{slide.image_url}" width="107" height="80"/>
+		</s:VGroup>
+		<s:VGroup height="100%" paddingLeft="5" paddingTop="5" paddingBottom="5" gap="20">
+			<s:Label text="{'Slide Title: '+slide.image_title==null?'':slide.image_title}"/>
+			<s:Label text="{'Date Added: '+slide.image_date_added}"/>
+			<s:Label text="{'Tags: '+slide.image_tags==null?'':slide.image_tags}"/>
+		</s:VGroup>
+	</s:HGroup>
+	
+</s:ItemRenderer>

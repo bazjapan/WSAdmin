@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:audio="views.audio.*" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.noteflight.standingwave3.output.AudioPlayer;
+			
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSAudio;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.TitleWindow;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			import ui.titlewindows.AWindowSkin;
+			import ui.titlewindows.CollapsibleTitleWindow;
+			
+			import uranrus.components.colapsingSidePanel.CollapsablePanel;
+			
+			import views.other.ShowLinkView;
+			
+			
+			[Bindable]
+			private var selected_audio:WSAudio;
+			
+			public var editAudioDetailsFunc:Function;
+			
+			[Bindable]
+			private var allowDownload:Boolean = true;
+			
+			
+			[Bindable]
+			public var recently_added:ArrayCollection = new ArrayCollection;
+
+			protected function dg_recents_clickHandler(event:MouseEvent):void
+			{
+				selected_audio = dg_recents.selectedItem as WSAudio;
+				if(selected_audio)
+				{
+//				
+					audioPlayer.queueAudio(selected_audio.audio_location,selected_audio.audio_total_time,false);
+				}
+			}
+
+
+			protected function btn_showLink_clickHandler(event:MouseEvent):void
+			{
+				var tw:CollapsibleTitleWindow = new CollapsibleTitleWindow;
+				tw.setStyle("skinClass", AWindowSkin);
+				var shLink:ShowLinkView = new ShowLinkView;
+				shLink.url = selected_audio.audio_location;
+				tw.title = "Audio URL";
+				tw.addElement(shLink);
+				tw.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+				{
+					PopUpManager.removePopUp(tw);
+					tw = null;
+					shLink = null;
+				});
+				
+				PopUpManager.addPopUp(tw,this);
+				
+			}
+			
+			protected function btn_editDetails_clickHandler(event:MouseEvent):void
+			{
+				if(!selected_audio){return;}
+				editAudioDetailsFunc(selected_audio,function(editedAudio:WSAudio):void
+				{
+					trace("edit detals button callback")
+				});
+					
+			}
+
+		]]>
+	</fx:Script>
+<mx:DataGrid id="dg_recents" width="100%" height="100%" dataProvider="{recently_added}" click="dg_recents_clickHandler(event)">
+<mx:columns>
+	<mx:DataGridColumn dataField="audio_location"/>
+	<mx:DataGridColumn dataField="date_added"/>
+	<mx:DataGridColumn dataField="audio_total_time"/>
+	<mx:DataGridColumn dataField="audio_size"/>
+</mx:columns>	
+</mx:DataGrid>
+	
+<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+<s:HGroup width="100%" horizontalAlign="left">
+<audio:MiniAudioPlayer2 id="audioPlayer" useStealthyRequests="false" allowDownload="{allowDownload}" visible="{dg_recents.selectedItem}" status_text="{''}"/>
+</s:HGroup>	
+		<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+			<s:HGroup width="100%" horizontalAlign="left">
+				
+			</s:HGroup>	
+		<s:HGroup width="100%" horizontalAlign="right">
+			<buttons:WSIconButton width="120" label="Show Details" toolTip="Show Audio Details" icon="{IconLib.DOC_EDIT_16}" id="btn_editDetails" visible="{selected_audio}" click="btn_editDetails_clickHandler(event)"/>
+			<buttons:WSIconButton width="120" label="Show Link" toolTip="Show Link to File" icon="{IconLib.GLOBE_16}" id="btn_showLink" click="btn_showLink_clickHandler(event)" visible="{selected_audio}"/>
+		</s:HGroup>	
+	</s:HGroup>	
+</s:HGroup>	
+    
+</s:Group>

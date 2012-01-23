@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" xmlns:views="views.*" creationComplete="cc(event)" xmlns:components="org.flashcommander.components.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.keyword.suggestion.googleSuggestion;
+			import jp.wordsmart.keyword.suggestion.wordsmartSuggestion;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import org.flashcommander.event.CustomEvent;
+			
+			import spark.components.TextInput;
+			import spark.events.TextOperationEvent;
+			
+			import utils.array.createUniqueCopy;
+			import utils.array.merge;
+			
+			import views.GoogleSuggestButtonSkin;
+			
+			
+			[Bindable]
+			private var suggestions:ArrayCollection = new ArrayCollection;
+			
+			protected function cc(event:FlexEvent):void
+			{
+				//textInput = cbx_text.te;
+			}
+			
+			private function onKeyDown(event:KeyboardEvent):void
+			{
+				if(event.charCode == 13)
+				{
+					addMe();
+				}
+			}
+			
+			private function onChange(event:TextOperationEvent):void
+			{
+				getSuggestions();
+			}
+			
+			
+			private function getSuggestions():void
+			{
+				if(cbx_text.text == "")return;
+				suggestions.source = [];
+				var term:String = cbx_text.text;
+				if(btn_use_google_suggest.selected)
+				{
+					googleSuggestion(
+						term, 
+						'en', 
+						true,
+						function(results:Array):void
+						{
+							suggestions.source = createUniqueCopy(merge([results, suggestions.source]));
+							
+						}); 
+				}
+				
+				wordsmartSuggestion(term,'en',true,
+					function(results:Array):void
+					{
+						suggestions.source = createUniqueCopy(merge([results, suggestions.source]));
+						
+					}); 
+			}
+			
+			
+			private function clearMe():void
+			{
+				suggestions.source = [];
+				cbx_text.text = "";
+				
+			}
+			private function addMe():void
+			{
+				if(cbx_text.text == "")return;
+				dispatchEvent(new Event("ADD_KEYWORD_TO_LIST"));
+				clearMe();
+			}
+			
+			protected function btn_clearText_clickHandler(event:MouseEvent):void
+			{
+				clearMe();
+			}
+			
+			protected function cbx_text_enterHandler(event:FlexEvent):void
+			{
+				addMe();
+			}
+
+
+			protected function cbx_text_selectHandler(event:CustomEvent):void
+			{
+				addMe();
+			}
+
+		]]>
+	</fx:Script>
+<s:HGroup width="100%" verticalAlign="middle" height="100%" paddingLeft="3" paddingRight="3">
+			
+			
+	<s:CheckBox id="btn_use_google_suggest" skinClass="views.GoogleSuggestButtonSkin" height="24" width="24" toolTip="Get Suggestions"/>
+	<components:AutoComplete id="cbx_text" change="onChange(event)"  select="cbx_text_selectHandler(event)" enter="cbx_text_enterHandler(event)"
+							 width="100%" dataProvider="{suggestions}" />
+	
+	
+	
+	<mx:Image buttonMode="true" source="{IconLib.CANCEL_18}" id="btn_clearText" toolTip="" width="16" height="16" click="btn_clearText_clickHandler(event)"/>
+			
+	<mx:Image buttonMode="true" source="{IconLib.ADD_KEYWORD_16}" width="16" height="16" visible="{cbx_text.text.length &gt; 0}" toolTip="Add" click="addMe()"/>
+			
+	</s:HGroup>
+
+</s:Group>

@@ -1,0 +1,1 @@
+package be.boulevart.google.ajaxapi.search.images.data.types {	/**	 * @author joris	 */	public class GoogleImageColorization {		public static const MONO : String = "mono";		public static const GRAY : String = "gray";		public static const COLOR : String = "color";	}}

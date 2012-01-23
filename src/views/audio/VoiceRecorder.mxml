@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc()" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+			<![CDATA[
+				import com.noteflight.standingwave3.elements.*;
+				import com.noteflight.standingwave3.filters.*;
+				import com.noteflight.standingwave3.formats.*;
+				import com.noteflight.standingwave3.generators.*;
+				import com.noteflight.standingwave3.modulation.*;
+				import com.noteflight.standingwave3.output.*;
+				import com.noteflight.standingwave3.performance.*;
+				import com.noteflight.standingwave3.sources.*;
+				import com.noteflight.standingwave3.utils.*;
+				
+				import flash.display.*;
+				import flash.events.*;
+				import flash.media.*;
+				import flash.net.*;
+				import flash.text.*;
+				import flash.utils.*;
+				
+				import jp.wordsmart.assets.IconLib;
+				
+				import mx.containers.TitleWindow;
+				import mx.controls.Alert;
+				import mx.core.Application;
+				import mx.events.CloseEvent;
+				import mx.managers.PopUpManager;
+				
+				import org.bytearray.micrecorder.MicRecorder;
+				import org.bytearray.micrecorder.encoder.WaveEncoder;
+				import org.bytearray.micrecorder.events.RecordingEvent;
+				
+				import utils.conversion.minutesToMilliseconds;
+				import utils.time.getDurationToMSString;
+				
+				private var maxMins:int = 2;
+				private var maxLength:int = minutesToMilliseconds(maxMins);
+				// mic vars
+				public var recorder:MicRecorder = new MicRecorder(new WaveEncoder());
+				[Bindable]
+				private var recording:Boolean = false;	
+				public var downloadFunc:Function//pass bytearray
+				
+				//data vars
+				[Bindable]
+				public var hasData:Boolean = false;//after recording mark true
+				[Bindable]
+				public var dataUnsaved:Boolean = false;
+				[Bindable]
+				public var totalRecordedTime:Number = 0;
+				// SW3 vars
+				public var player:AudioPlayer = new AudioPlayer();
+				
+				
+				
+				
+				
+				
+				public function cc():void
+				{
+					btn_record.addEventListener(MouseEvent.CLICK, startRecording);		
+					btn_record.buttonMode = true;
+					
+					player.addEventListener(Event.COMPLETE, onPlayComplete);
+					
+					recorder.addEventListener(RecordingEvent.RECORDING, onRecording)
+					
+					recorder.addEventListener(Event.COMPLETE, onRecordComplete)
+					
+				
+				}
+				public function reset():void
+				{
+					hasData= false;
+					dataUnsaved = false;
+					totalRecordedTime = 0;
+				}
+				
+				
+				public function initSineDrawer():void
+				{
+					// Sine Drawing
+					graphics.lineStyle(1.5, 0x000000);
+					graphics.moveTo(0, 355);			
+				}
+				
+				public function startRecording(event:Event):void
+				{			
+					if (!recording) 
+					{
+						hasData = false;
+						dataUnsaved = false;
+						recorder.record();
+						
+					} else if (recording) {
+						stopRecording();
+					}
+				}
+				public function onRecording(e:RecordingEvent):void
+				{			
+					totalRecordedTime = e.time;
+					//checkmax
+					if(totalRecordedTime>maxLength)
+					{
+						stopRecording();
+						Alert.show("Recording time has exceeded "+maxMins.toString()+" mins");
+					}
+					var al:Number = recorder.microphone.activityLevel;
+					onActivitylevelUpdate(recorder.microphone.activityLevel);
+					if (!recording) recording = true;
+					
+				}
+				[Bindable]
+				private var micLevel:Number = 0;
+				public function onActivitylevelUpdate(al:Number):void
+				{
+					micLevel = al;
+					//statustxt.text += "Activity "+al.toString()+newLine;
+					// draw a cool sine wave!
+					/* xpos += speedX;
+					ypos = centerY + Math.sin(angle) * amplitude * ((al > 20)? al / 100 : 1)
+					angle += speedAngle;
+					graphics.lineTo(xpos,ypos) */
+				} 
+				private function onRecordComplete(e:Event):void
+				{
+					recording = false;
+					dataUnsaved = true;
+					hasData = true;
+					//statustxt.text += "recording complete"+newLine();	
+					micLevel = 0;
+				}
+				
+				private function onPlayComplete(e:Event):void
+				{
+					//statustxt.text += "playing complete"+newLine();		
+				}
+				
+				
+				[Bindable]
+				private var playing:Boolean;
+				
+				protected function btn_play_clickHandler(event:MouseEvent):void
+				{
+					var src:Sample;
+					if(!playing)
+					{
+						playing = true;
+						recorder.output.position = 0;
+						src = WaveFile.createSample(recorder.output) // this is fine
+						
+						// I think im not clearing out the old audio properly here somehow...
+						var sequence:ListPerformance = new ListPerformance()
+						sequence.addSourceAt(0, src)
+						var ap:AudioPerformer = new AudioPerformer(sequence, new AudioDescriptor())
+						player.play(ap);
+						
+						player.addEventListener(Event.SOUND_COMPLETE, resetPlayBtn);
+							
+						function resetPlayBtn(evt:Event):void
+						{
+							playing = false;
+							player.stop(src);
+						}	
+											
+					}
+					else
+					{
+						playing = false;
+						player.stop(src);
+					}
+					
+					
+					
+				}
+				private function stopRecording():void
+				{
+					recorder.stop()
+					recording = false;
+				}
+				
+				
+				
+
+				protected function btn_download_clickHandler(event:MouseEvent):void
+				{
+					if(downloadFunc==null)return;
+					downloadFunc(recorder.output);
+					
+				}
+				private var micSettings:TitleWindow;
+				protected function btn_micSettings_clickHandler(event:MouseEvent):void
+				{
+					if(!micSettings){micSettings = new TitleWindow;
+						micSettings.showCloseButton = true;
+						micSettings.addEventListener(CloseEvent.CLOSE,function(ce:CloseEvent):void{
+							PopUpManager.removePopUp(micSettings);
+						})
+						micSettings.title= "Microphone Settings";
+						var ms:MicrophoneSettings = new MicrophoneSettings;
+						ms.micRecorder = recorder;
+						micSettings.addElement(ms);
+					};
+					
+					PopUpManager.addPopUp(micSettings, Application.application as DisplayObject);
+					PopUpManager.centerPopUp(micSettings);
+				}
+
+			]]>
+		</fx:Script>
+		<!--<mx:TextArea id="statustxt" width="100%" height="100%"/>-->
+		<s:BorderContainer width="100%" height="40">
+			<s:layout>
+				<s:HorizontalLayout paddingLeft="2" paddingRight="2"  verticalAlign="middle"/>
+			</s:layout>
+			<buttons:WSIconButton width="100" label="{recording?'Stop':'Record'}" icon="{recording?IconLib.STOP_16:IconLib.RECORD_RED_16}"  id="btn_record" toolTip="Record" visible="{!playing}"/>
+			<buttons:WSIconButton width="100" label="{playing?'Stop':'Play'}" icon="{playing?IconLib.STOP_16:IconLib.PLAY_16}" id="btn_play" click="btn_play_clickHandler(event)" toolTip="Play Recording" visible="{hasData}"/>
+			<s:HGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Label toolTip="Total Time of Recording" text="{'Total Time: '+getDurationToMSString(totalRecordedTime/1000)}" width="100%"/>
+			<s:Label toolTip="Microphone Level" text="{'Mic Level: '+micLevel}" width="100%"/>
+			</s:HGroup>
+			
+			<buttons:WSIconButton width="100" label="Download" icon="{IconLib.DOWNLOAD}" id="btn_download" click="btn_download_clickHandler(event)" toolTip="Download Recorded Audio" visible="{hasData}"/>
+			<mx:Image buttonMode="true" source="{IconLib.OPTIONS_16}" id="btn_micSettings" click="btn_micSettings_clickHandler(event)" toolTip="Open Microphone Options"/>
+				
+			
+		</s:BorderContainer>
+	
+		
+		
+	
+
+</s:Group>

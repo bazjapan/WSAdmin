@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer backgroundColor="0x000000" cornerRadius="5" backgroundAlpha="0.8" borderStyle="inset" borderColor="0x000000" borderWeight="2" xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:VerticalLayout paddingLeft="40" paddingRight="40" paddingBottom="20" paddingTop="40">
+			
+		</s:VerticalLayout>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			
+			[Bindable]
+			public var message:String;
+			
+		
+			
+			[Bindable]
+			public var textSize:int = 24;
+			
+			
+		]]>
+	</fx:Script>
+	
+<s:Label text="{message}" fontSize="{textSize}" id="lb_message" color="0xffffff"/>	
+</s:BorderContainer>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Image xmlns:fx="http://ns.adobe.com/mxml/2009" width="16" height="16" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			
+			public function set languageCode(code:String):void
+			{
+				this.source = languageCodeToLanguageObject(code)["icon"];
+				this.toolTip = "Change Language";
+			}
+			
+		]]>
+	</fx:Script>
+</mx:Image>

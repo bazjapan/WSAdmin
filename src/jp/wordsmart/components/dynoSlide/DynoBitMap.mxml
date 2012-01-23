@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" borderVisible="{model.bw &gt; 0}" visible="{model.visible}" backgroundAlpha="{model.bga}" borderAlpha="{model.ba}" blendMode="{model.bm}" backgroundColor="{model.bgc}" borderWeight="{model.bw}" borderColor="{model.bc}"  x="{model.x}" y="{model.y}" rotation="{model.rotation}"  xmlns:dynoSlide="jp.wordsmart.components.dynoSlide.*" width="{model.width}" height="{model.height}">
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.components.dynoSlide.models.DynoBitMapModel;
+			import jp.wordsmart.utils.progressEventToPercent;
+			
+			import utils.number.roundDecimalToPlace;
+			
+			[Bindable]public var model:DynoBitMapModel;
+			[Bindable]private var showLoading:Boolean;
+			[Bindable]private var loadingString:String = '';
+			
+			
+			
+			public function getBitMapData():BitmapData
+			{
+				if(bitmapImage.source is BitmapData)
+				{
+					return bitmapImage.source as BitmapData;
+				}
+				var bmd:BitmapData = Bitmap(bitmapImage.source).bitmapData;
+				return bmd;
+			}
+			public function setBitMapData(bmd:BitmapData):void
+			{
+				bitmapImage.source = bmd;
+			}
+			public function reloadImage():void
+			{
+				loader.load(model.src);
+				showLoading = true;
+				loader.addEventListener(Event.COMPLETE,onLoadComplete);
+				loader.addEventListener(ProgressEvent.PROGRESS,function(pe:ProgressEvent):void{
+					loadingString = 'Loading '+progressEventToPercent(pe)+'%';
+				});
+				loader.addEventListener(IOErrorEvent.IO_ERROR, function(err:IOErrorEvent):void
+				{
+					loadingString = "Loading Error"
+				})
+			}
+
+			private function onLoadComplete(event:Event):void
+			{
+				bitmapImage.source=loader.content;
+				doCrop()
+				showLoading = false;
+			}
+			private function doCrop():void
+			{
+				if(model.cd)
+				{
+					var cropData:Object = model.cd;
+					var cropRect:Rectangle = new Rectangle(cropData.x,cropData.y,cropData.w,cropData.h);
+					var croppedBitmap:BitmapData = new BitmapData(cropRect.width, cropRect.height, false);
+					croppedBitmap.copyPixels(getBitMapData(), cropRect, new Point(0, 0));
+					setBitMapData(croppedBitmap);
+				}
+			}
+		]]>
+	</fx:Script>
+		
+	
+	
+	<mx:SWFLoader  id="loader" maintainAspectRatio="false" includeInLayout="false" visible="false" />
+	<s:BitmapImage alpha="{model.ia}" id="bitmapImage" width="100%" height="100%"/>
+	<dynoSlide:SimpleDynoDataModelInfoLabel id="cc_info" model="{model}" showLoading="{showLoading}" loadingString="{loadingString}" includeInLayout="{cc_info.width &lt; model.width}" />
+
+</s:BorderContainer>

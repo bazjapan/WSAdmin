@@ -1,0 +1,1 @@
+package be.boulevart.google.ajaxapi.search.web.data.types {	/**	 * @author joris	 */	public class GoogleWebSafeMode {		public static const ACTIVE : String = "active";		public static const MODERATE : String = "moderate";		public static const OFF : String = "off";	}}

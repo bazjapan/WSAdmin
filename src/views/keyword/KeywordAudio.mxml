@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc()" xmlns:audio="views.audio.*" xmlns:audio1="views.request.audio.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<s:states>
+		<s:State name="audio"/>
+		<s:State name="requests"/>
+	</s:states>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSAudio;
+
+			import jp.wordsmart.json.controllers.WSAudioController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ItemClickEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			private var stateInfo:Array = [{"label":"Audio","icon":IconLib.SPEAKER_16, 'state':'audio'}, 
+				{"label":"Audio Requests","icon":IconLib.HAND_16, 'state':'requests'}
+			];
+			protected function toggle_states_itemClickHandler(event:ItemClickEvent = null):void
+			{
+				this.currentState = stateInfo[toggle_states.selectedIndex]['state'];
+			}
+				
+				
+			[Bindable]
+			public var transcript:String;
+			[Bindable]
+			public var language_code:String;
+			
+			
+			
+			private var audioController:WSAudioController;
+			
+			private function cc():void
+			{
+				//lt_audio.getMatchingAudio(transcript,language_code);
+			}
+			
+			/* private function onAUDIO_REGISTERED_EVENT(addedAudio:WsAudio):void
+			{
+				matchingAudio.addItem(addedAudio);
+			} */
+			
+			
+			
+			protected function btn_reload_audio_requests_clickHandler(event:MouseEvent):void
+			{
+				cc_audioRequestList.refresh_requests();
+			}
+			protected function btn_findAudio_clickHandler(event:MouseEvent):void
+			{
+				lt_audio.getMatchingAudio();
+			}
+			
+			//private function saveToAudioList(ap:AudioProvider):void
+			//{
+				/* ap.audio_language = this.keyword_language;
+				progressBarHelper.enableProgress("Registering", 100);
+				registerAudioProviderAudioToWordSmart(ap,0,ap.getURL(ta_keyword_text.text,"",keyword_language),ta_keyword_text.text,
+				function(audio:Audio):void
+				{
+				trace("audio.ID "+audio.ID)
+				},ddlt_audioProviders.lastPlayLength,"");
+				ddlt_audioProviders.canSay = false; */
+			//} 
+			
+		
+			
+			
+
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<!--AUDIO-->
+	
+	
+	<s:VGroup width="100%" height="100%">
+	
+			
+			<s:HGroup width="100%">
+				<mx:ToggleButtonBar id="toggle_states" width="100%"
+									horizontalGap="5"
+									itemClick="toggle_states_itemClickHandler(event)"
+									toggleOnClick="true"
+									dataProvider="{stateInfo}" labelField="label">
+				</mx:ToggleButtonBar>
+			<audio:AudioAdderButtonBar transcript="{transcript}" language_code="{language_code}" />	
+			
+			<!-- AUDIO CONTROLS-->
+			<s:HGroup includeIn="audio" width="100%" verticalAlign="middle" id="audio_features" paddingTop="3">
+				<s:HGroup width="100%" height="100%" paddingRight="5" horizontalAlign="right" verticalAlign="bottom" gap="5">
+				<s:Label height="16" text="{'Available Audio for '+languageCodeToText(language_code)}" verticalAlign="middle"/>	
+				<mx:Image verticalAlign="bottom" buttonMode="true" source="{IconLib.RELOAD}" width="16" height="16" id="btn_findAudio" click="btn_findAudio_clickHandler(event)" toolTip="{'Get Matching Audio'}"  />
+				</s:HGroup>
+			</s:HGroup>
+			<!--AUDIO CONTROLS-->
+	
+			<!-- REQUEST CONTROLS-->
+			<s:HGroup includeIn="requests" width="100%"  verticalAlign="middle" paddingTop="3">
+				<s:HGroup width="100%" height="100%" paddingRight="5" horizontalAlign="right" verticalAlign="bottom" gap="5">
+				<s:Label height="16"  text="{'Audio Requests for '+languageCodeToText(language_code)}" verticalAlign="middle"/>	
+				<mx:Image buttonMode="true" verticalAlign="bottom" width="16" height="16" source="{IconLib.RELOAD}"  toolTip="Get Pending Audio Requests" id="btn_reload_audio_requests" click="btn_reload_audio_requests_clickHandler(event)"/>
+				</s:HGroup>
+			</s:HGroup>
+			<!--REQUEST CONTROLS-->
+		
+			</s:HGroup>
+			
+		<s:VGroup width="100%" height="100%" includeIn="audio">
+			<audio:AudioList id="lt_audio" language_code="{language_code}" transcript="{transcript}" width="100%" height="100%"/>
+		</s:VGroup>
+		
+			<!--AUDIO REQUESTS-->	
+		<s:VGroup width="100%" height="100%" includeIn="requests">
+			<audio1:AudioRequestList  id="cc_audioRequestList" language_code="{language_code}" transcript="{transcript}" width="100%"  height="100%" />
+		</s:VGroup>
+	
+	</s:VGroup>
+
+		
+	<!--//AUDIO-->
+	
+	
+</s:Group>

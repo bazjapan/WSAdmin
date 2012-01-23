@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer name="LangDestinationToSourceIconItemRenderer"
+				xmlns:fx="http://ns.adobe.com/mxml/2009"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				focusEnabled="false">
+	<!-- states -->
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="hovered" />
+		<s:State name="selected" />
+		<s:State name="normalAndShowsCaret"/>
+		<s:State name="hoveredAndShowsCaret"/>
+		<s:State name="selectedAndShowsCaret"/>
+	</s:states>
+	
+	<fx:Script>
+		<![CDATA[
+			override public function set label(value:String):void {
+				super.label = value;
+				labelDisplay.text = label; 
+			}
+		]]>
+	</fx:Script>
+	
+	<!--	<s:Rect left="0" right="0" top="0" bottom="0">
+		<s:stroke.normalAndShowsCaret>
+			<s:SolidColorStroke color="{selectionColor}" weight="1"/>
+		</s:stroke.normalAndShowsCaret>
+		<s:stroke.hoveredAndShowsCaret>
+			<s:SolidColorStroke color="{selectionColor}" weight="1"/>
+		</s:stroke.hoveredAndShowsCaret>
+		<s:stroke.selectedAndShowsCaret>
+			<s:SolidColorStroke color="{selectionColor}" weight="1"/>
+		</s:stroke.selectedAndShowsCaret>
+		<s:fill>
+			<s:SolidColor color.normal="{contentBackgroundColor}"
+						  color.normalAndShowsCaret="{contentBackgroundColor}"
+						  color.hovered="{rollOverColor}"	
+						  color.hoveredAndShowsCaret="{rollOverColor}"
+						  color.selected="{selectionColor}"
+						  color.selectedAndShowsCaret="{selectionColor}" />
+		</s:fill>
+	</s:Rect>-->
+	<s:HGroup paddingLeft="5" height="20" verticalAlign="middle">
+		
+	
+	<s:BitmapImage id="icon1"
+				   source="{data.sourceIcon}"
+				   verticalCenter="0"
+				    />
+	<s:Label id="labelDisplay" textAlign="center" width="100%"
+				  verticalCenter="0"
+				  />
+	
+	<s:BitmapImage id="icon2"
+				   source="{data.destIcon}"
+				   verticalCenter="0"
+				   />
+	</s:HGroup>
+</s:ItemRenderer>

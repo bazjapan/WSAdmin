@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"  xmlns:keyword="views.keyword.*">
+	<s:states>
+		<s:State name="loader"/>
+		<s:State name="detailsSetter"/>
+	</s:states>
+	<fx:Script>
+		<![CDATA[
+			import mx.events.ItemClickEvent;
+			import jp.wordsmart.assets.IconLib;
+			
+			private var stateInfo:Array = [{"label":"Load Keywords","icon":IconLib.LOAD_KEYWORDS_16, 'state':'loader'}, {"label":"Set Details","icon":IconLib.DOC_EDIT_16, 'state':'detailsSetter'}]
+			
+			protected function toggle_states_itemClickHandler(event:ItemClickEvent):void
+			{
+				this.currentState = stateInfo[toggle_states.selectedIndex]['state'];
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup paddingRight="3" paddingLeft="3" paddingTop="3">
+		<mx:ToggleButtonBar id="toggle_states" width="100%"
+							horizontalGap="5"
+							itemClick="toggle_states_itemClickHandler(event)"
+							toggleOnClick="true"
+							selectedIndex="0" dataProvider="{stateInfo}" labelField="label">
+		</mx:ToggleButtonBar>
+		<s:VGroup width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+		
+		<keyword:KeywordLoader width="100%" height="100%" id="cc_keyword_loader" includeIn="loader" >
+			
+		</keyword:KeywordLoader>
+		<keyword:KeywordDetailsSetter  id="cc_details_setter" includeIn="detailsSetter" width="100%" height="100%">
+			
+		</keyword:KeywordDetailsSetter>
+			
+		</s:VGroup>
+		
+		
+	</s:VGroup>
+	
+	
+</s:Group>

@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc()" xmlns:dynoSlide="jp.wordsmart.components.dynoSlide.*" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.roguedevelopment.objecthandles.Flex4ChildManager;
+			import com.roguedevelopment.objecthandles.Flex4HandleFactory;
+			import com.roguedevelopment.objecthandles.ObjectChangedEvent;
+			import com.roguedevelopment.objecthandles.ObjectHandles;
+			import com.roguedevelopment.objecthandles.constraints.MaintainProportionConstraint;
+			import com.roguedevelopment.objecthandles.decorators.DecoratorManager;
+			
+			import jp.wordsmart.components.dynoSlide.DynoBitMap;
+			import jp.wordsmart.components.dynoSlide.DynoText;
+			import jp.wordsmart.components.dynoSlide.models.DynoBitMapModel;
+			import jp.wordsmart.components.dynoSlide.models.DynoSlideBackgroundModel;
+			import jp.wordsmart.components.dynoSlide.models.DynoSlideModel;
+			import jp.wordsmart.components.dynoSlide.models.DynoTextModel;
+			import jp.wordsmart.components.dynoSlide.models.SimpleDynoDataModel;
+			import jp.wordsmart.components.dynoSlide.tasks.addBitMapToSlide;
+			import jp.wordsmart.components.dynoSlide.tasks.addTextToSlide;
+			import jp.wordsmart.components.dynoSlide.tasks.chooseImage;
+			import jp.wordsmart.components.dynoSlide.tasks.makeDefaultDynoBitMapModel;
+			import jp.wordsmart.components.dynoSlide.tasks.makeDefaultDynoTextModel;
+			import jp.wordsmart.components.dynoSlide.tasks.openImageCropper;
+			import jp.wordsmart.components.dynoSlide.toolbars.DynoObjectToolBar;
+			import jp.wordsmart.dto.WSImage;
+			
+			import mx.core.IVisualElement;
+			import mx.core.IVisualElementContainer;
+			import mx.events.FlexEvent;
+			
+			import spark.components.SkinnableContainer;
+			
+			import utils.number.randomWithinRange;
+			import utils.number.roundDecimalToPlace;
+			import utils.positioning.bringForward;
+			import utils.positioning.bringToFront;
+			import utils.positioning.moveBack;
+			import utils.positioning.sendToBack;
+			
+	
+			
+			protected var objectHandles:ObjectHandles;
+			protected var decoratorManager:DecoratorManager;
+			private var toolbar:DynoObjectToolBar = new DynoObjectToolBar();
+			private var toolbarInit:Boolean;
+			
+			[Bindable]public var selected_dynoBitMap:DynoBitMap;
+			[Bindable]public var selected_dynoText:DynoText;
+			[Bindable]public var selected_object:SkinnableContainer;//curretnly selected object either text or bitmap or Background
+			
+			[Bindable]public var wordSmartImage:WSImage;
+			[Bindable]public var image_edit_model:DynoSlideModel;
+			
+			[Bindable]public var imageWidth:int;
+			[Bindable]public var imageHeight:int;
+			[Bindable]public var modelHasChanged:Boolean;
+			[Bindable]public var pendingEdit:Boolean;//set to false after user adds items to canvas
+			
+			
+			private function cc():void
+			{
+				//set selected object to background
+				selected_object = dyno_bg;
+				dyno_bg.addEventListener(MouseEvent.MOUSE_DOWN, onBackGroundMouseDown);
+				adviceBox.addEventListener(MouseEvent.MOUSE_DOWN, onBackGroundMouseDown);
+				
+				objectHandles = new ObjectHandles( container , 
+					null, 
+					new Flex4HandleFactory() , 
+					new Flex4ChildManager() );
+				if(!wordSmartImage){makeNew()};
+				
+				objectHandles.addEventListener(ObjectChangedEvent.OBJECT_MOVING,onObjectMoving);
+				objectHandles.addEventListener(ObjectChangedEvent.OBJECT_RESIZING,onObjectResizing);
+				objectHandles.addEventListener(ObjectChangedEvent.OBJECT_ROTATING,onObjectRotating);
+				objectHandles.addEventListener(ObjectChangedEvent.OBJECT_MOVED,onObjectMoved);
+				objectHandles.addEventListener(ObjectChangedEvent.OBJECT_RESIZED,onObjectResized);
+				objectHandles.addEventListener(ObjectChangedEvent.OBJECT_ROTATED,onObjectRotated);
+				
+			}
+
+			private function onObjectRotated(event:ObjectChangedEvent):void
+			{
+				for each (var obj:Object in event.relatedObjects)
+				{
+					SimpleDynoDataModel(obj).showRotationInfo = false;
+					//SimpleDynoDataModel(obj).x = Math.floor(SimpleDynoDataModel(obj).x);
+					//SimpleDynoDataModel(obj).y = Math.floor(SimpleDynoDataModel(obj).y);
+					SimpleDynoDataModel(obj).width =roundDecimalToPlace(SimpleDynoDataModel(obj).width,1);
+					SimpleDynoDataModel(obj).height =roundDecimalToPlace(SimpleDynoDataModel(obj).height,1);
+				}
+			}
+
+			private function onObjectResized(event:ObjectChangedEvent):void
+			{
+				for each (var obj:Object in event.relatedObjects)
+				{
+					SimpleDynoDataModel(obj).showSizeInfo = false;
+				}
+			}
+
+			private function onObjectMoved(event:ObjectChangedEvent):void
+			{
+				for each (var obj:Object in event.relatedObjects)
+				{
+					SimpleDynoDataModel(obj).showPositionInfo = false;
+				}
+			}
+
+			private function onObjectRotating(event:ObjectChangedEvent):void
+			{
+				for each (var obj:Object in event.relatedObjects)
+				{
+					SimpleDynoDataModel(obj).showRotationInfo = true;
+				}
+				
+				
+			}
+
+			private function onObjectResizing(event:ObjectChangedEvent):void
+			{
+				for each (var obj:Object in event.relatedObjects)
+				{
+					SimpleDynoDataModel(obj).showSizeInfo = true;
+				}
+			}
+
+			private function onObjectMoving(event:ObjectChangedEvent):void
+			{
+				for each (var obj:Object in event.relatedObjects)
+				{
+					SimpleDynoDataModel(obj).showPositionInfo = true;
+				}
+			}
+
+			
+			
+			private function onBackGroundMouseDown(event:MouseEvent):void
+			{
+				selected_dynoBitMap = null;
+				selected_dynoText = null;
+				selected_object = dyno_bg;
+				objectHandles.selectionManager.clearSelection();
+				popToolbar(image_edit_model.bgm, event.stageX, event.stageY);
+			}
+			public function removeDynoObject():void
+			{
+				if(selected_object == null || selected_object is DynoBackground)return;
+				layer_dynoObjects.removeElement(selected_object);
+				objectHandles.selectionManager.clearSelection();
+				
+				if(selected_object is DynoBitMap)
+				{
+					selected_dynoBitMap = null;
+				}
+				if(selected_object is DynoText)
+				{
+					selected_dynoText = null;
+				}
+				
+				selected_object = null;
+				
+			}
+			
+			
+			protected function addBitMapModelToSlide(model:DynoBitMapModel, loadFromOrigURL:Boolean = true):void
+			{//loadFromOrigURL is false if object is created via a copy;
+				var dbm:DynoBitMap = addBitMapToSlide(layer_dynoObjects, objectHandles, model, loadFromOrigURL);
+				dbm.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown_DynoBitMap);
+				selected_dynoBitMap = dbm;
+				selected_object = selected_dynoBitMap;
+				objectHandles.selectionManager.setSelected(selected_dynoBitMap.model);
+				pendingEdit = false;
+			}
+			
+			private function OnMouseDown_DynoBitMap(event:MouseEvent):void
+			{
+				selected_dynoBitMap = DynoBitMap(event.currentTarget);
+				selected_object = selected_dynoBitMap;
+				popToolbar(selected_dynoBitMap.model, event.stageX, event.stageY);
+				
+				
+			}
+			protected function addTextModelToSlide(model:DynoTextModel):void
+			{
+				var dt:DynoText = addTextToSlide(layer_dynoObjects, objectHandles, model);	
+				dt.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown_DynoText);
+				selected_dynoText = dt;
+				selected_object = selected_dynoText;
+				objectHandles.selectionManager.setSelected(selected_dynoText.model);
+				pendingEdit = false;
+				
+			}
+			
+			
+			private function OnMouseDown_DynoText(event:MouseEvent):void
+			{
+				selected_dynoText = DynoText(event.currentTarget);
+				selected_object = selected_dynoText;
+				popToolbar(selected_dynoText.model, event.stageX, event.stageY);
+				
+			}
+			
+			
+			
+			
+			
+			private function popToolbar(model:DynoSlideBackgroundModel, x:int, y:int):void
+			{
+				if(!toolbarInit)
+				{
+					toolbarInit = true;
+					toolbar = new DynoObjectToolBar;
+					container.addElement(toolbar);
+					toolbar.addEventListener(FlexEvent.CREATION_COMPLETE, function(fe:FlexEvent):void
+					{
+					
+					toolbar.sendBackward = MoveBack;
+					toolbar.sendToBack = SendToBack;
+					toolbar.bringForward = BringForward;
+					toolbar.bringToFront = BringToFront;
+					toolbar.copy = copy;
+					toolbar.remove = removeDynoObject;
+					toolbar.maximize = maximizeImage;
+					toolbar.toggleLayer = toggleLayer;
+					toolbar.changeImage = changeImage;
+					toolbar.cropImage = cropBitMap;
+					toolbar.maintainAspectRatio = setMaitainAspectRatio;
+					toolbar.reloadImage = function():void{selected_dynoBitMap.reloadImage()};
+					toolbar.x = container.width-toolbar.width;
+					toolbar.y = container.y;
+					});
+					
+				}
+				toolbar.model = model;	
+				
+				
+			}
+			
+			
+			public function changeImage():void
+			{
+				if(!selected_dynoBitMap)return;
+				chooseImage([],function(imageSource:Object):void
+				{
+					
+				});
+			}
+			public function cropBitMap():void
+			{
+				if(!selected_dynoBitMap)return;
+				openImageCropper(selected_dynoBitMap,image_edit_model.bgm.bgc,image_edit_model.bgm.bga, this,true,function():void
+				{
+					trace("crop was made");
+				})
+			}
+			
+			
+			
+			protected function toggleLayer(layerName:String, visible:Boolean):void
+			{
+				if(layerName == "bitmaps")
+				{
+					
+					for each (var db:DynoBitMap in getDynoBitmaps())
+					{
+						db.model.visible = visible;
+						objectHandles.selectionManager.removeFromSelected(db.model);
+						
+					}
+				}
+				if(layerName == "text")
+				{
+					for each (var dt:DynoText in getDynoTexts())
+					{
+						dt.model.visible = visible;
+						objectHandles.selectionManager.removeFromSelected(dt.model);
+						
+					}
+					
+				}
+				
+			}
+			
+			private function getDynoBitmaps():Array
+			{
+				var retArr:Array = [];
+				for (var i:int = 0; i < layer_dynoObjects.numElements; i++)
+				{
+					var ve:IVisualElement = layer_dynoObjects.getElementAt(i)
+					if(ve is DynoBitMap)
+					{
+						retArr.push(ve);
+					}
+				}
+				return retArr;
+			}
+			private function getDynoTexts():Array
+			{
+				var retArr:Array = [];
+				for (var i:int = 0; i < layer_dynoObjects.numElements; i++)
+				{
+					var ve:IVisualElement = layer_dynoObjects.getElementAt(i)
+					if(ve is DynoText)
+					{
+						retArr.push(ve);
+					}
+				}
+				return retArr;
+			}
+			
+			
+			
+			
+			
+			//z index
+			protected function MoveBack(event:MouseEvent = null):void
+			{
+				utils.positioning.moveBack(selected_object,layer_dynoObjects);
+			}
+			
+			
+			protected function BringForward(event:MouseEvent = null):void
+			{
+				utils.positioning.bringForward(selected_object,layer_dynoObjects);
+				objectHandles.selectionManager.setSelected(objectHandles.selectionManager.currentlySelected[0]);
+				
+			}
+			
+			
+			protected function SendToBack(event:MouseEvent = null):void
+			{
+				utils.positioning.sendToBack(selected_object,layer_dynoObjects);
+			}
+			
+			
+			protected function BringToFront(event:MouseEvent = null):void
+			{
+				utils.positioning.bringToFront(selected_object,layer_dynoObjects)
+				objectHandles.selectionManager.setSelected(objectHandles.selectionManager.currentlySelected[0]);
+				
+			}
+			
+			
+			private function selectedObjectIsImage():Boolean
+			{
+				if(!selected_object)return false;
+				return selected_object is DynoBitMap
+			}
+			private function selectedObjectIsText():Boolean
+			{
+				if(!selected_object)return false;
+				return selected_object is DynoText
+			}
+			
+			
+			protected function copy():void
+			{
+				if(selected_object == null)return;
+				if(selected_object is DynoBitMap)
+				{
+					var clonedModel:DynoBitMapModel = DynoBitMap(selected_object).model.clone();
+					clonedModel.x = clonedModel.x+10;
+					clonedModel.y = clonedModel.y+10;
+					var copiedBMD:BitmapData = DynoBitMap(selected_object).getBitMapData();
+					addBitMapModelToSlide(clonedModel,false);
+					
+					selected_dynoBitMap.model = clonedModel;
+					selected_dynoBitMap.setBitMapData(copiedBMD);
+				}
+				if(selected_object is DynoText)
+				{
+					var clonedTextModel:DynoTextModel = DynoText(selected_object).model.clone();
+					clonedTextModel.x = clonedTextModel.x+10;
+					clonedTextModel.y = clonedTextModel.y+10;
+					addTextModelToSlide(clonedTextModel);
+					selected_dynoText.model = clonedTextModel;	
+				}
+				
+			}
+			
+			public function paste(objToPaste:Object):void
+			{
+				if(objToPaste == null)return;
+				if(objToPaste is DynoBitMap)
+				{
+					var clonedModel:DynoBitMapModel = DynoBitMap(objToPaste).model.clone();
+					clonedModel.x = clonedModel.x+10;
+					clonedModel.y = clonedModel.y+10;
+					var copiedBMD:BitmapData = DynoBitMap(objToPaste).getBitMapData();
+					addBitMapModelToSlide(clonedModel,false);
+					
+					selected_dynoBitMap.model = clonedModel;
+					selected_dynoBitMap.setBitMapData(copiedBMD);
+				}
+				if(objToPaste is DynoText)
+				{
+					var clonedTextModel:DynoTextModel = DynoText(objToPaste).model.clone();
+					clonedTextModel.x = clonedTextModel.x+10;
+					clonedTextModel.y = clonedTextModel.y+10;
+					addTextModelToSlide(clonedTextModel);
+					selected_dynoText.model = clonedTextModel;	
+				}
+				
+			}
+			
+			
+			
+			public function maximizeImage():void
+			{
+				if(selected_dynoBitMap == null)return;
+				selected_dynoBitMap.model.x = layer_dynoObjects.x+2;
+				selected_dynoBitMap.model.y = layer_dynoObjects.y+2;
+				selected_dynoBitMap.model.width = layer_dynoObjects.width-4;
+				selected_dynoBitMap.model.height = layer_dynoObjects.height-4;
+			}
+			
+			public function maximizeTextArea():void
+			{
+				if(selected_dynoText == null)return;
+				selected_dynoText.model.x = layer_dynoObjects.x+2;
+				selected_dynoText.model.y = layer_dynoObjects.y+2;
+				selected_dynoText.model.width = layer_dynoObjects.width-4;
+				selected_dynoText.model.height = layer_dynoObjects.height-4;
+			}
+			
+			
+			
+			
+			//Public API ------------------------------
+			
+			public function getBitMapData():BitmapData
+			{
+				objectHandles.selectionManager.clearSelection();
+				var bd:BitmapData = new BitmapData(snapShot_container.width,snapShot_container.height);
+				bd.draw(snapShot_container);
+				return bd;
+			}
+			public function addNewImage(origUrl:String, fullscreen:Boolean, bmd:BitmapData = null):void
+			{
+				var model:DynoBitMapModel = makeDefaultDynoBitMapModel();
+				model.x = Math.floor(container.width/2 - (model.width/2)+randomWithinRange(10,50));
+				model.y = Math.floor(container.height/2-(model.height/2)+randomWithinRange(10,50));
+				if(origUrl != ''){model.src = origUrl;}
+				var loadFromOriginal:Boolean = bmd == null;
+				var firstObj:Boolean = isFirstObjectAdded(layer_dynoObjects);
+				addBitMapModelToSlide(model, loadFromOriginal);
+				if(!loadFromOriginal)selected_dynoBitMap.setBitMapData(bmd);
+				
+				if(fullscreen && firstObj)
+				{
+					maximizeImage();
+				}
+			}
+			
+			private function isFirstObjectAdded(layer:IVisualElementContainer):Boolean
+			{
+				return layer.numElements<1;
+			}
+			public function addNewText(text:String):void
+			{
+				var model:DynoTextModel = makeDefaultDynoTextModel();
+				model.x = Math.floor(container.width/2 - (model.width/2)+randomWithinRange(10,50));
+				model.y = Math.floor(container.height/2-(model.height/2)+randomWithinRange(10,50));
+				model.text = text;
+				addTextModelToSlide(model);
+				
+			}
+			
+			
+			public function makeNew():void
+			{
+				
+				wordSmartImage = new WSImage;
+				image_edit_model = new DynoSlideModel;
+				image_edit_model.bgm = new DynoSlideBackgroundModel;
+				image_edit_model.bgm.height = dyno_bg.height;
+				image_edit_model.bgm.width = dyno_bg.width;
+				image_edit_model.bgm.x = dyno_bg.x;//always same???
+				image_edit_model.bgm.y = dyno_bg.y;
+				image_edit_model.tms = [];
+				image_edit_model.bms = [];
+				clearAll();
+				
+			}
+			
+			
+			public function updateModel():WSImage
+			{
+				//not model but ...
+				wordSmartImage.image_w = int(container.width);
+				wordSmartImage.image_h = int(container.height);
+				//fill slide model;
+				//images
+				image_edit_model.bms = [];
+				image_edit_model.tms = [];
+				
+				for each (var db:DynoBitMap in getDynoBitmaps())
+				{
+					image_edit_model.bms.push(db.model);
+				}
+				//text
+				for each (var dt:DynoText in getDynoTexts())
+				{
+					image_edit_model.tms.push(dt.model);
+				}
+				
+				wordSmartImage.image_edit_model = image_edit_model.getJSON();
+				
+				//spit out json
+				return wordSmartImage;
+			}
+			public function load(img:WSImage):void
+			{
+				clearAll();
+				wordSmartImage = img;
+				image_edit_model = new DynoSlideModel();
+				image_edit_model.setJSON(img.image_edit_model);
+				
+				for each (var dm:DynoBitMapModel in image_edit_model.bms)
+				{
+					addBitMapModelToSlide(dm,true);	
+				}
+				for each (var tm:DynoTextModel in image_edit_model.tms)
+				{
+					addTextModelToSlide(tm);	
+				}
+			}
+			
+			
+			public function clearAll():void
+			{
+				layer_dynoObjects.removeAllElements();
+				layer_masks.removeAllElements();
+				objectHandles.selectionManager.clearSelection();
+				selected_dynoBitMap = null;
+				selected_dynoText = null;
+				selected_object = null;
+				popToolbar(image_edit_model.bgm, 0, 0);
+				pendingEdit = true;
+			}
+			
+			[Bindable]public var maintainAspectRatio:Boolean;
+			public function setMaitainAspectRatio(on:Boolean):void
+			{
+				if(on)
+				{
+					objectHandles.addDefaultConstraint(new MaintainProportionConstraint());
+					maintainAspectRatio = true;
+				}
+				else
+				{
+					objectHandles.defaultConstraints.pop();
+					maintainAspectRatio = false;
+				}
+			}
+		]]>
+	</fx:Script>
+		<s:Group enabled="{wordSmartImage != null}" id="container" width="{imageWidth}" height="{imageHeight}" >
+			<s:Group id="snapShot_container" width="100%" height="100%">
+			<dynoSlide:DynoBackground id="dyno_bg" model="{image_edit_model.bgm}" width="100%" height="100%">
+			</dynoSlide:DynoBackground>
+			<s:Group id="adviceBox" width="100%" height="100%" includeInLayout="{pendingEdit}" visible="{pendingEdit}">
+				<s:Label toolTip="Drop Images or Add Items Here"  width="100%" height="100%" verticalAlign="middle" textAlign="center" fontSize="30" fontWeight="bold" alpha="0.3" text="Drop Images or Add Items"/>
+			</s:Group>
+			<s:Group id="layer_dynoObjects" width="100%" height="100%">
+			</s:Group>
+			<s:Group id="layer_masks" width="100%" height="100%">
+			</s:Group>
+			</s:Group>
+		</s:Group>
+</s:Group>

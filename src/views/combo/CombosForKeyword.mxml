@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.model.KeywordAdminModel;
+			
+			import mx.events.ListEvent;
+
+			
+			protected function dg_changeHandler(event:ListEvent):void
+			{
+				selectedCombo = dg.selectedItem as WSCombo;
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+<fx:Script>
+	<![CDATA[
+		import jp.wordsmart.utils.popMessage;
+		import jp.wordsmart.dto.WSCombo;
+		import com.pbsmediatech.json.utils.extractResult;
+		import jp.wordsmart.json.utils.WSComboResultHelper;
+		import mx.rpc.events.ResultEvent;
+		import jp.wordsmart.dto.WSKeyword;
+		import jp.wordsmart.DomainSettings;
+		import jp.wordsmart.json.controllers.WSComboController;
+		
+		private var comboController:WSComboController = new WSComboController(DomainSettings.API_URL);
+		
+		[Bindable]public var selectedCombo:WSCombo;
+		
+		public function reset():void
+		{
+			this.selectedCombo = null;
+		}
+		
+		public function getCombos():void
+		{
+			var kw:WSKeyword = KeywordAdminModel.getInstance().selectedKeyword;
+			if(kw == null){return};
+			popMessage("Getting Combos for Keyword",2000,20);
+			comboController.get_ws_combos_by_keyword_ID({keyword_ID:kw.keyword_ID}, function(evt:ResultEvent):void
+			{
+				var results:Array = new WSComboResultHelper().resultToArray(extractResult(evt));
+				popMessage("Loaded "+results.length+" combos",1000);
+				KeywordAdminModel.getInstance().selectedKeyword_combos.source = results;
+			});
+		}
+		public function removeCombo():void
+		{
+			if(selectedCombo == null){return};
+			popMessage("Removing Combo");
+			comboController.remove_ws_combos_by_combo_ID(selectedCombo, function(evt:ResultEvent):void
+			{
+				popMessage("Combo Removed");
+				var index:int = KeywordAdminModel.getInstance().selectedKeyword_combos.getItemIndex(selectedCombo);
+				if(index>-1){KeywordAdminModel.getInstance().selectedKeyword_combos.removeItemAt(index)};
+				
+			});
+			
+								
+							
+		}
+	]]>
+</fx:Script>	
+	
+
+<mx:DataGrid id="dg" change="dg_changeHandler(event)" dataProvider="{KeywordAdminModel.getInstance().selectedKeyword_combos}" width="100%" height="100%">
+	
+</mx:DataGrid>	
+</s:Group>

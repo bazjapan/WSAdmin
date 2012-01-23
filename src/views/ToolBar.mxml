@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer width="50" styleName="toolbar" xmlns:fx="http://ns.adobe.com/mxml/2009"  
+											   xmlns:s="library://ns.adobe.com/flex/spark" 
+											   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:collapsibleTitleWindow="ui.collapsibleTitleWindow.*" creationComplete="cc(event)"  xmlns:titlewindows="ui.titlewindows.*">
+	<fx:Script>
+		<![CDATA[
+			import com.devahead.utils.PopUpUtils;
+			
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.events.AudioEvent;
+			import jp.wordsmart.events.ImageEvent;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.slide.makeDefaultSlide;
+			import jp.wordsmart.utils.makeDraggable;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.skins.spark.TitleWindowCloseButtonSkin;
+			
+			import ui.titlewindows.AWindowMinButtonSkin;
+			import ui.titlewindows.AWindowSkin;
+			import ui.titlewindows.CollapsibleTitleWindow;
+			
+			import views.image.WordSmartSlideAdder;
+			import views.options.OptionsView;
+
+			public var startMove:Function;
+			protected function cc(event:FlexEvent):void
+			{
+				//this.closeButton.visible = false;
+				new makeDraggable(dragButton, this);
+				
+			}
+			
+
+			protected function btn_openAudioRec_clickHandler(event:MouseEvent):void
+			{
+			dispatchEvent(new AudioEvent(AudioEvent.EVENT_ADD_AUDIO,getDefaultAudio(),true));
+			}
+			
+			
+
+			private function onFullscreenClick( event:MouseEvent ):void {
+				if( stage.displayState == StageDisplayState.NORMAL ) {
+					stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+					
+				} else {
+					stage.displayState = StageDisplayState.NORMAL;
+					
+				}
+			}
+			private function openTranslationRequests( event:MouseEvent ):void {
+				dispatchEvent(new Event("SHOW_TRANSLATION_REQUESTS"));
+			}
+			
+			
+
+			protected function btn_open_loader_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("LOAD_KEYWORDS"));
+			}
+
+
+			protected function button1_doubleClickHandler(event:MouseEvent):void
+			{
+				vg_butts.visible = !vg_butts.visible;
+			}
+
+			private function closeAllPops():void
+			{
+				PopUpUtils.closeAllPopups();
+				
+				
+			}
+			private var minimized:Boolean;
+			private function shadeAllPops():void
+			{
+				minimized = !minimized
+				var allPops:ArrayCollection = PopUpUtils.getAllPopups();
+				//PopUpUtils.closeAllPopups();
+				for (var i:int = 0; i < allPops.length; i++)
+				{
+					try
+					{
+					var element:DisplayObject = allPops[i] as DisplayObject;
+					if(element.hasOwnProperty("minimized"))
+					{
+					element["minimized"] = minimized;
+					}
+					}
+					catch(err:Error)
+					{
+						trace(err);
+					}
+					
+				}
+				
+			}
+			
+			private function openOptions():void
+			{
+				var wrapper:CollapsibleTitleWindow = new CollapsibleTitleWindow;
+				var form:OptionsView = new OptionsView;
+				form.width = 400;
+				form.height= 400;
+				form.contributor = AppModel.getInstance().signedInContributor
+				wrapper.title = "Options";
+				wrapper.addElement(form);
+				wrapper.setStyle("skinClass", AWindowSkin);
+				PopUpManager.addPopUp(wrapper,parent);
+				PopUpManager.centerPopUp(wrapper);
+				
+				wrapper.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+				{
+					PopUpManager.removePopUp(wrapper);
+					
+				});
+				form.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+				{
+					PopUpManager.removePopUp(wrapper);
+					
+				});
+			}
+			private function openImageAdder():void
+			{
+				dispatchEvent(new Event("OPEN_SLIDE_ADDER",true));
+			}
+			
+		]]>
+	</fx:Script>
+	<s:layout>
+		<s:VerticalLayout horizontalAlign="center" gap="0"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" gap="0">
+	<s:Button id="dragButton" doubleClickEnabled="true" doubleClick="button1_doubleClickHandler(event)" width="48" height="10"  useHandCursor="true"/>
+	<s:HGroup width="100%">
+	<s:HGroup width="100%" horizontalAlign="center">
+		<s:Button width="15" height="15"  skinClass="ui.titlewindows.AWindowMinButtonSkin" click="shadeAllPops()" toolTip="Min/Max all Windows"/>
+	</s:HGroup>
+	<s:HGroup width="100%" horizontalAlign="center">
+		<s:Button width="15" height="15"  skinClass="spark.skins.spark.TitleWindowCloseButtonSkin" click="closeAllPops()" toolTip="Hide all Windows"/>
+	</s:HGroup>
+	</s:HGroup>
+	</s:VGroup>
+	<s:VGroup id="vg_butts" width="100%" height="100%">
+	
+	<mx:Image width="48" height="48" buttonMode="true" id="btn_open_loader" click="btn_open_loader_clickHandler(event)" source="{IconLib.KEYWORD_LARGE}" toolTip="Keyword List Helper"/>
+	<mx:Image width="48" height="48" buttonMode="true" source="{IconLib.IMAGE_48}" click="openImageAdder()" toolTip="Show Slide Adder"/>
+	<mx:Image buttonMode="true" source="{IconLib.AUDIO_HEADSET}" width="48" height="48" id="btn_openAudioRec" click="btn_openAudioRec_clickHandler(event)" toolTip="Show Audio Adder"/>
+	<!--<mx:Image toolTip="Translation Requests" buttonMode="true" source="{IconLib.TRANSLATE_LARGE}" width="48" height="48" click="openImageAdder2()"/>
+	<mx:Image toolTip="Translation Requests" buttonMode="true" source="{IconLib.TRANSLATE_LARGE}" width="48" height="48" click="openTranslationRequests(event)"/>
+	-->	
+		<s:HGroup width="48">
+			<s:HGroup width="50%" horizontalAlign="left" paddingLeft="3">
+				<mx:Image buttonMode="true" source="{IconLib.FULLSECREEN_16}" width="16" height="16" click="onFullscreenClick(event)" toolTip="Toggle Fullscreen"/>
+			</s:HGroup>
+			<s:HGroup width="50%" horizontalAlign="right" paddingRight="3">
+				<mx:Image buttonMode="true" source="{IconLib.OPTIONS_16}" width="16" height="16" click="openOptions()" toolTip="Open Options"/>
+			</s:HGroup>
+		</s:HGroup>	
+	</s:VGroup>
+</s:BorderContainer>

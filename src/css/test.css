@@ -1,0 +1,12 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+
+.toolbar
+{
+  cornerRadius:"3";
+  backgroundColor:"#FFFFFF";
+  borderColor:"#000000" ;
+  borderStyle:"solid";
+}

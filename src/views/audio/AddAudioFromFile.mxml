@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc()" xmlns:buttons="views.buttons.*" xmlns:audio="views.audio.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.utils.ItemsDroppedOnComponent;
+			import jp.wordsmart.utils.audio.mp3.MP3InfoLoader;
+			import jp.wordsmart.utils.progressEventToPercent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			
+			import spark.components.Label;
+			
+			import utils.array.containsObjectWithSameParameterValue;
+			import utils.date.now;
+			import utils.object.clone;
+			import utils.timestamp.dateToTimeStampUTC;
+			
+			import views.audio.renderers.AudioIcon16Renderer;
+		
+			
+			[Bindable]
+			public var added_audios:ArrayCollection = new ArrayCollection;
+			
+			
+			public var audio:WSAudio;
+			
+			[Bindable]
+			public var selected_Audio:WSAudio;
+			
+			[Bindable]
+			public var canSave:Boolean;
+			
+			public var registerFunc:Function;
+			public var uploadFunc:Function;
+			public var showTagger:Function;
+			
+			public var showProgressFunc:Function;
+			public var hideProgressFunc:Function;
+			
+			
+			private var mp3infoLoader:MP3InfoLoader = new MP3InfoLoader();
+			
+			private function cc():void
+			{
+			
+				
+				detailsForm.showAudioTagger = showTagger;
+				if(!audio)
+				{
+					audio = getDefaultAudio();
+				}
+				selected_Audio  = new WSAudio(clone(audio));
+				detailsForm.audio = selected_Audio;
+				
+				audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_FAIL_EVENT, onAUDIO_LOADED_FAIL_EVENT);
+				audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_SUCCESS_EVENT,onAUDIO_LOADED_SUCCESS_EVENT);
+				
+				
+				
+			}
+
+			private function onAUDIO_LENGTH_UPDATED(event:Event):void
+			{
+				var urlToMatch:String = audioPlayer.audioURL;
+				var totalTimeOfAudio:Number = audioPlayer.lastLoadedAudioLength;
+				for each (var a:WSAudio in added_audios)
+				{
+					if(urlToMatch == a.audio_orig_url)
+					{
+						a.audio_total_time = totalTimeOfAudio;
+					}
+				}
+			}
+
+			private function onSOUND_LOADED_EVENT(event:Event):void
+			{
+				
+				
+			}
+			
+			private var dragDropHelper:ItemsDroppedOnComponent;
+			protected function add_files_cc():void
+			{
+				dragDropHelper = new ItemsDroppedOnComponent(["MP3"],added_audios.source,"audio_orig_url",false);
+				dragDropHelper.attachComponent(vg_main);
+				dragDropHelper.enabled = lt_files.enabled;
+				dragDropHelper.addEventListener("ITEMS_READY_FOR_UPLOAD_EVENT", onITEMS_READY_FOR_UPLOAD_EVENT);
+			}
+			
+			protected function lt_files_itemClickHandler(event:Event):void
+			{
+				if(!lt_files.selectedItem){return}
+				selected_Audio = lt_files.selectedItem as WSAudio;
+				
+				audioPlayer.queueAudio(selected_Audio.audio_orig_url,0,false)
+				
+				if(detailsForm.taggerOpen)
+				{
+					detailsForm.btn_audio_tags_clickHandler();
+				}
+					
+			}
+			
+			private function onITEMS_READY_FOR_UPLOAD_EVENT(event:Event):void
+			{
+				for each (var f:File in dragDropHelper.files_just_added)
+				{
+					trace("converting "+f.url)
+					convertToAudio(f, function(newAudio:WSAudio):void
+					{
+						added_audios.addItem(newAudio);
+					});
+				}
+				dragDropHelper.files_just_added = [];
+				updateUI()
+			}
+			
+			private function updateUI():void
+			{
+				canSave = added_audios.length>0;
+				
+				if(added_audios.length>0)
+				{
+					if(lt_files.selectedItem == null)
+					{
+						lt_files.selectedItem = added_audios.getItemAt(0);
+						selected_Audio = lt_files.selectedItem;
+					}
+				}
+				
+				
+			}
+			private var fileRef:File;
+			protected function btn_addFile_clickHandler(event:MouseEvent):void
+			{
+				fileRef = new File();
+						fileRef.addEventListener(Event.SELECT, function(evt:Event):void
+						{//check size Max
+							try {
+								trace( "size (bytes): " + fileRef.size);
+								
+								if(!containsObjectWithSameParameterValue(fileRef.url,"audio_orig_url",added_audios.source))	
+								{
+									convertToAudio(fileRef, function(newAudio:WSAudio):void
+									{
+										added_audios.addItem(newAudio);
+									});
+									
+								}
+								else
+								{
+									Alert.show("File already added");
+								}
+								
+								updateUI();
+								
+							} catch (err:Error) {
+								trace( "ERROR: zero-byte file");
+							}
+						});
+						fileRef.addEventListener(Event.COMPLETE	,function(evt:Event):void
+						{
+							
+						});
+						fileRef.addEventListener(ProgressEvent.PROGRESS,function(progEvt:ProgressEvent):void
+						{
+							var perc:Number = progressEventToPercent(progEvt);
+							if(perc<95)
+							{
+								showProgressFunc("Loading Files", perc);
+							}
+							else
+							{
+								hideProgressFunc();
+							}
+						});
+							
+				
+				fileRef.browse([new FileFilter("Audio", "*.mp3;")]);
+				
+			}
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				added_audios.removeItemAt(lt_files.selectedIndex);
+			}
+			
+			protected function saveMe():void
+			{
+				uploadAudios();
+			}
+			private function uploadAudios():void
+			{
+				var numAudioRegisterd:int = 0;
+				var numRemoved:int = 0;
+				if(added_audios.length>0)
+				{
+					var audio:WSAudio = added_audios.getItemAt(0) as WSAudio;
+					if(audio.audio_meta == WordSmartConstants.AUDIO_BAD_FILE)
+					{
+						added_audios.removeItemAt(0);
+						numRemoved++;
+						uploadAudios();
+					}
+					var file:File = new File(audio.audio_orig_url);
+					
+					uploadFile(file,function(uploadedFile:File,uploadURL:String):void
+					{
+						var audioForUploadedFile:WSAudio = added_audios.getItemAt(0) as WSAudio;
+						audioForUploadedFile.audio_origin = WordSmartConstants.AUDIO_ORIGIN_USER_FILE
+						audioForUploadedFile.audio_isLocal = 1;
+						audioForUploadedFile.audio_mime_type = "audio/mpeg";
+						audioForUploadedFile.audio_location = uploadURL;
+						audioForUploadedFile.audio_orig_url = uploadedFile.url;
+						audioForUploadedFile.audio_size = uploadedFile.data.length;
+						registerFunc(audioForUploadedFile,function(audioWithID:WSAudio):void
+						{
+							trace(audioForUploadedFile.audio_transcript);
+							trace("Saved as "+audioWithID.audio_ID)
+							numAudioRegisterd ++;
+							lb_advice.text = numAudioRegisterd +" audio files have been added";
+							canSave = false;
+							added_audios.removeItemAt(0);
+							uploadAudios();
+						});
+						
+					})
+					
+					
+				}
+				else
+				{
+					showTagger(selected_Audio,null,true);
+					btn_new.visible = true;
+					lt_files.enabled = false;
+					lb_advice.text = "Drop Files Here";
+				} 			
+			
+			}
+			private function uploadFile(file:File,completeCallBack:Function):void
+			{
+				
+				file.addEventListener(Event.COMPLETE,function(evt:Event):void
+					{
+						uploadFunc(file.data, function(returnedURL:String):void
+						{
+							completeCallBack(file, returnedURL);
+							
+							
+						});
+					}); 
+				
+				file.load();
+					
+			}
+			
+			
+			
+			//on file added this is called
+			private function convertToAudio(f:File, completeFunc:Function):void
+			{
+				
+				var newAudio:WSAudio = new WSAudio(clone(selected_Audio));
+				newAudio.audio_total_time = NaN;	
+				newAudio.audio_orig_url = f.url;
+				getFileAudioLength(f,newAudio);
+				completeFunc(newAudio);
+			}
+			
+			
+			
+			protected function btn_new_clickHandler(event:MouseEvent):void
+			{
+				added_audios = new ArrayCollection;
+				selected_Audio  = new WSAudio(clone(audio));
+				lt_files.enabled = true;
+				btn_new.visible = false;
+			}
+		
+			private function getFileAudioLength(f:File, audio:WSAudio):void
+			{
+				mp3infoLoader.tryLoad(f.url, true, 
+					function mp3InfoCallback(resultConst:String, all:MP3InfoLoader):void
+					{
+						if(resultConst == MP3InfoLoader.MP3INFO_LOAD_SUCCESSFULL)
+						{
+							trace(all.lengthSeconds);
+							audio.audio_total_time = all.lengthSeconds*1000;
+							
+						}
+						else
+						{
+							audio.audio_total_time = 0;
+							trace("INFO Load Failed "+all.lengthSeconds);
+						}
+					})
+			}
+			
+
+			private function onAUDIO_LOADED_SUCCESS_EVENT(event:Event):void
+			{
+				trace("Load Success "+audioPlayer.lastLoadedAudioLength);
+				selected_Audio.audio_total_time = audioPlayer.lastLoadedAudioLength;
+			}
+			
+			private function onAUDIO_LOADED_FAIL_EVENT(event:Event):void
+			{
+				trace("Load Error "+audioPlayer.lastLoadedAudioLength)
+				Alert.show("Unable to Play Audio,", "Play Error",Alert.OK, null, function(ce:CloseEvent):void
+				{
+					selected_Audio.audio_meta = WordSmartConstants.AUDIO_BAD_FILE;
+					
+				});
+			}
+			
+			
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	<s:VGroup gap="1" id="vg_main" width="100%" height="100%" creationComplete="add_files_cc()">
+		<s:Group id="adviceBox" width="100%" height="100%">
+		<s:List width="100%" contentBackgroundAlpha="0" height="100%" dataProvider="{added_audios}" id="lt_files" click="lt_files_itemClickHandler(event)" itemRenderer="views.audio.renderers.AudioIcon16Renderer">
+			<s:layout>
+				<s:HorizontalLayout>
+					
+				</s:HorizontalLayout>
+			</s:layout>
+		</s:List>
+			<s:Label toolTip="Drag Files from your Computer" visible="{added_audios.length &lt; 1}" width="100%" height="100%" verticalAlign="middle" textAlign="center" fontSize="30" fontWeight="bold" alpha="0.3" text="Drop Files Here"/>
+		</s:Group>
+		<s:HGroup width="100%">
+			<s:HGroup width="100%" horizontalAlign="left">
+			<audio:MiniAudioPlayer2 allowDownload="{false}" visible="{lt_files.selectedItem}" id="audioPlayer" status_text="{}"/>
+			
+			</s:HGroup>	
+			<s:HGroup  height="100%" verticalAlign="middle" horizontalAlign="center">
+				<s:Label id="lb_advice" text="{added_audios.length&gt;1?added_audios.length+'  files upload':added_audios.length+'  file upload'}" fontWeight="bold" toolTip="Number of Audio Files to Upload"/>
+			</s:HGroup>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<buttons:WSIconButton width="100" icon="{IconLib.MINUS_16}" id="btn_remove" toolTip="Remove Selected Audio File" label="Remove File" visible="{lt_files.selectedItem}" click="btn_remove_clickHandler(event)"/>
+				<buttons:WSIconButton width="100" icon="{IconLib.ADD_16}" id="btn_addFile" toolTip="Browse for File to Add" label="Add File" visible="true" click="btn_addFile_clickHandler(event)"/>
+			</s:HGroup>	
+		</s:HGroup>
+		<audio:AudioDetailsForm audio="{selected_Audio}" id="detailsForm" width="100%" height="100%">
+			
+		</audio:AudioDetailsForm>
+		<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+			<s:HGroup width="100%" horizontalAlign="left">
+			<buttons:NewButton  id="btn_new" toolTip="New Audio From URL" click="btn_new_clickHandler(event)" visible="{false}"/>
+			</s:HGroup>	
+			<s:HGroup width="100%" height="100%">
+			</s:HGroup>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<buttons:SaveButton label="{added_audios.length&gt;1?'Save Files to WordSmart':'Save File to WordSmart'}" width="160" click="saveMe()" visible="{canSave}" />
+			</s:HGroup>	
+		</s:HGroup>	
+		
+		
+	</s:VGroup>
+</s:Group>

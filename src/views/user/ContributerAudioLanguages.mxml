@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="290" creationComplete="cc()" xmlns:language="views.language.*">
+	<s:layout>
+		<s:VerticalLayout horizontalAlign="center" verticalAlign="middle"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.utils.language.dialectCodetoLanguageObject;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable]
+			public var contributor:Contributer;
+			[Bindable]
+			private var availableDialects:ArrayCollection = new ArrayCollection;
+			private var dialects:Array = WordSmartConstants.DIALECTS;
+			[Bindable]
+			private var secondLanguages:ArrayCollection;
+			public var showLanguageChoices:Function;//params array of excludes + callback
+			
+			private function cc():void
+			{
+				dg_secondLanguages.addEventListener("REMOVE_ITEM_EVENT",onREMOVE_ITEM_EVENT);
+			}
+			
+			[Bindable]
+			public var isValid:Boolean;
+			
+			private function checkIsValid():Boolean
+			{
+				return contributor.user_native_dialect_code != null;
+			}
+
+			private function onREMOVE_ITEM_EVENT(event:Event):void
+			{
+				var index:int = dg_secondLanguages.getChildIndex(event.target as DisplayObject);
+				secondLanguages.removeItemAt(index);
+			}
+			
+			public function setContributer(cont:Contributer):void
+			{
+				dialects = WordSmartConstants.DIALECTS;
+				secondLanguages = new ArrayCollection;
+				contributor = cont;
+				if(!isNaN(contributor.ID))
+				{
+					var dialect_code:String = contributor.user_native_dialect_code;
+					var language_code:String = dialect_code.split("-")[0];
+					
+					dd_languages.language = language_code;
+					availableDialects.source = get_dialects(language_code);
+					dd_dialect.selectedIndex = getSelectedDialectIndex(dialect_code);
+					
+					for each (var str:String in contributor.secondLanguages)
+					{
+						var lang:Object = languageCodeToLanguageObject(str);
+						secondLanguages.addItem(lang);
+						
+					}
+					
+					
+				}
+				isValid = checkIsValid();
+			}
+			
+			
+			
+			
+			protected function dd_languages_changeHandler(event:spark.events.IndexChangeEvent):void
+			{
+				var language_code:String = dd_languages.getSelectedLangCode();
+				availableDialects.source = get_dialects(language_code);
+				dd_dialect.selectedIndex = 0;
+				
+				contributor.user_native_dialect_code = dd_dialect.selectedItem["dialect_code"];
+				isValid = checkIsValid();
+			}
+			
+			
+			private function get_dialects(language_code:String):Array
+			{
+				var available_dialects:Array = [];
+				for each (var obj:Object in dialects)
+				{
+					if(language_code == obj["language_code"])
+					{
+						available_dialects.push(obj);
+					}
+				}
+				return available_dialects;
+			}
+			private function getSelectedDialectIndex(dialect_code:String):int
+			{
+				var index:int = 0;
+				var counter:int = 0;
+				for each (var obj:Object in availableDialects.source)
+				{
+					if(obj["dialect_code"] == dialect_code)
+					{
+						index = counter;
+						break;
+					}
+					counter++;
+				}
+				return index;
+			}
+
+			protected function btn_add_lang_clickHandler(event:MouseEvent):void
+			{
+				showLanguageChoices(getListOfLangCodes(),function(obj:Object):void
+				{
+					secondLanguages.addItem(obj);
+				})
+			}
+			
+			private function getListOfLangCodes():Array
+			{
+				var codes:Array = [dialectCodetoLanguageObject(contributor.user_native_dialect_code)["value"]];
+				
+				for each (var obj:Object in secondLanguages)
+				{
+					
+					codes.push(obj["value"]);
+				}
+				trace("exclude "+codes.toString())
+				return codes;
+			}
+			
+			public function saveContributer():void
+			{
+				if(!dd_dialect.selectedItem)return;
+				contributor.user_native_dialect_code = dd_dialect.selectedItem["dialect_code"];
+				
+				
+				var secLangs:Array = [];
+				for each (var obj:Object in secondLanguages)
+				{
+					secLangs.push(obj["value"]);
+				}
+				
+				contributor.user_second_languages = secLangs.toString();
+				trace(contributor.user_native_dialect_code)
+				trace(contributor.user_second_languages)
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Form width="100%" height="100%">
+		<s:HGroup verticalAlign="middle" width="100%" paddingBottom="10">
+			<s:Label text="Audio Languages" fontWeight="bold" width="100%"/>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<mx:Image source="{IconLib.MARK_AS_DONE_16}" width="16" height="16" visible="{isValid}"/>
+			</s:HGroup>
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="100%" paddingBottom="5">
+			<s:Label text="Native Language" fontWeight="bold" width="100%"/>
+			
+		</s:HGroup>
+		<mx:FormItem width="100%">
+		<s:HGroup width="100%">
+				<language:LanguageDropDown id="dd_languages" change="dd_languages_changeHandler(event)" prompt="Select Language" /> 
+				<s:DropDownList selectedIndex="0" enabled="{availableDialects.length>1}" id="dd_dialect" labelField="dialect_label" dataProvider="{availableDialects}"/> 
+			</s:HGroup>
+		</mx:FormItem>
+		
+			
+	
+			<s:VGroup width="100%" paddingTop="10" visible="{dd_languages.selectedItem}">
+				<s:HGroup width="100%" verticalAlign="middle" paddingBottom="5">
+					<s:Label text="Second Languages" width="100%" fontWeight="bold"/>	
+					<s:HGroup width="100%" horizontalAlign="right">
+						<mx:Image width="16" height="16" buttonMode="true" id="btn_add_lang" click="btn_add_lang_clickHandler(event)" source="{IconLib.ADD_16}" toolTip="Add Language"/>	
+					</s:HGroup>
+				</s:HGroup>
+				
+				<mx:FormItem width="100%">
+					
+				<s:Scroller width="100%" height="145">
+				
+				<s:DataGroup id="dg_secondLanguages" width="100%" dataProvider="{secondLanguages}" itemRenderer="views.other.DeletableItemRenderer">
+					<s:layout>
+						<s:VerticalLayout gap="1" />
+					</s:layout>
+				</s:DataGroup>
+					
+				</s:Scroller>
+				</mx:FormItem>	
+			</s:VGroup>
+		
+		
+		
+	</mx:Form>
+</s:Group>

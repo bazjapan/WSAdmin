@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%" xmlns:image="views.image.*" xmlns:buttons="views.buttons.*" xmlns:views="views.*" xmlns:slide="views.slide.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.pbsmediatech.json.utils.extractResultResult;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.dto.utils.WSImageUtils;
+			import jp.wordsmart.events.ImageEvent;
+			import jp.wordsmart.events.SlideEvent;
+			import jp.wordsmart.json.controllers.WSImageController;
+			import jp.wordsmart.model.KeywordAdminModel;
+			import jp.wordsmart.model.SlideAdderModel;
+			import jp.wordsmart.slide.getNewSlideImageFileName;
+			import jp.wordsmart.upload.ObjectUploader;
+			import jp.wordsmart.utils.ProgressBarHelper;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.graphics.codec.PNGEncoder;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.TitleWindow;
+			
+			import utils.date.now;
+			import utils.object.clone;
+			import utils.stringList.listAppend;
+			import utils.timestamp.dateToTimestamp;
+			
+			import views.tasks.addTagToSlide;
+			
+			private var imageController:WSImageController = new WSImageController(DomainSettings.API_URL);
+			
+		
+			[Bindable]private var startMenuItems:Array = [{"long_label":"Create New Slide","label":"Create","icon":IconLib.PENCIL_16, 'state':'create','includeInStart':true}, 
+				{"long_label":"List Slides","label":"Slide List","icon":IconLib.LIST_BULLETS_16, 'state':'slideList','includeInStart':true},
+				{"long_label":"View Slide Keywords","label":"Slide Keywords","icon":IconLib.CLIP_16, 'state':'keywords','includeInStart':false}
+			];
+			
+			
+			
+			
+			private function cc():void
+			{
+				SlideAdderModel.getInstance().imageAdder = this;
+				goToState("start");
+				
+				this.addEventListener("EVENT_GO_TO_SLIDE_LIST",onEVENT_GO_TO_SLIDE_LIST);
+				this.addEventListener("EVENT_GO_BACK",onEVENT_GO_BACK);
+				this.addEventListener("EVENT_GO_CREATE",onEVENT_GO_CREATE);
+				this.addEventListener(ImageEvent.EVENT_SHOW_IMAGE_DETAILS,onEVENT_SHOW_IMAGE_DETAILS);
+				this.addEventListener(ImageEvent.EVENT_SHOW_KEYWORD_DETAILS,onEVENT_SHOW_KEYWORD_DETAILS);
+				this.addEventListener(ImageEvent.EVENT_UPDATE_IMAGE_TO_REMOTE,onEVENT_UPDATE_IMAGE_TO_REMOTE);
+				this.addEventListener(ImageEvent.EVENT_EDIT_IMAGE,onEVENT_EDIT_IMAGE);
+				this.addEventListener(ImageEvent.EVENT_ADD_IMAGE_TO_KEYWORD,onEVENT_ADD_IMAGE_TO_KEYWORD);
+				
+			}
+
+			private function onEVENT_ADD_IMAGE_TO_KEYWORD(event:ImageEvent):void
+			{
+				event.stopImmediatePropagation();
+				if(KeywordAdminModel.getInstance().selectedKeyword)
+				{
+					var imageToAdd:WSImage = event.image;
+					var hit:Boolean;
+					for each (var image:WSImage in KeywordAdminModel.getInstance().selectedKeyword_attachedImages)
+					{
+						if(image.image_url == imageToAdd.image_url)
+						{
+							hit = true;
+							showAlert("Slide already added");
+							event.callback();
+							break;
+						}
+					}
+					if(!hit)
+					{
+						KeywordAdminModel.getInstance().selectedKeyword_attachedImages.addItem(imageToAdd);
+						listAppend(imageToAdd.image_tags,KeywordAdminModel.getInstance().selectedKeyword.keyword_text,"|");
+						addTagToSlide(KeywordAdminModel.getInstance().selectedKeyword.keyword_text,imageToAdd);
+						event.callback();
+					}
+				}
+				else
+				{
+					showAlert("No Keyword Selected");
+				}
+				function showAlert(message:String):void
+				{
+					var alert:Alert = Alert.show(message);
+					var timer:Timer = new Timer(3000,1);
+					timer.reset();
+					timer.start()
+					timer.addEventListener(TimerEvent.TIMER_COMPLETE, function(evt:TimerEvent):void
+					{
+						if(alert)
+							PopUpManager.removePopUp(alert);
+					});
+				}
+				
+			}
+
+			private var lastState:String;
+			public function goToState(state:String):void
+			{
+				lastState = currentState;
+				currentState = state;
+				
+			}
+			public function editImageDetail(img:WSImage):void
+			{
+				SlideAdderModel.getInstance().selectedImage = img;
+				goToState("details");
+			}
+			public function editImage(img:WSImage):void
+			{
+				if(cc_creator == null)
+				{
+					goToState("create");
+					cc_creator.addEventListener(FlexEvent.CREATION_COMPLETE, 
+						function(evt:FlexEvent):void
+						{
+							doIt();	
+						})
+				}
+				else
+				{
+					doIt();
+					goToState("create");
+				}
+				
+				function doIt():void
+				{
+					if(cc_creator.setSelectedEditor(img)== -1)
+					{
+						cc_creator.editImage(img);
+						
+					}
+					
+				}
+			}
+			
+			//-----------------
+			private function onEVENT_EDIT_IMAGE(event:ImageEvent):void
+			{
+				editImage(event.image);
+			}
+
+			private function onEVENT_UPDATE_IMAGE_TO_REMOTE(event:ImageEvent):void
+			{
+				event.stopImmediatePropagation();
+				updateImage(event.image, function(img:WSImage):void
+				{
+					trace("Image update complete");
+				});
+			}
+
+			private function onEVENT_GO_CREATE(event:Event):void
+			{
+				goToState("create");
+			}
+
+			private function getStartInfo():Array
+			{
+				var useInState:Array = [];
+				for each (var obj:Object in startMenuItems)
+				{
+				if(obj['includeInStart'] == true)
+				{
+				useInState.push(obj);
+				}
+				}
+				return useInState;
+			}
+			
+			
+			private var imageUploader:ObjectUploader;
+			private function uploadImage(bmd:BitmapData, fileName:String, completeFunc:Function):void
+			{
+				
+				showProgress("Processing Image", 100);
+				var png:ByteArray = convertToPNG(bmd);
+				showProgress("Uploading Image", 100);
+				if(!imageUploader){
+					imageUploader = new ObjectUploader();
+					imageUploader.progressFunc = function(perc:Number):void{
+						showProgress("Uploading Image", perc);
+					}
+					imageUploader.errorFunc = function():void
+					{
+						hideProgress();
+						Alert.show("Unable to Upload Image", "Upload Error");
+					}
+				}
+				imageUploader.completeFunc = function(returnedURL:String):void
+				{
+					completeFunc(returnedURL, png.length);
+					hideProgress();
+				}
+				imageUploader.uploadImage(png, fileName, "image/png");
+			}
+			
+			private function convertToPNG(bmd:BitmapData):ByteArray
+			{
+				var pngEnc:PNGEncoder = new PNGEncoder;
+				return pngEnc.encode(bmd);
+			}
+			
+			private function registerImage(img:WSImage, completeFunc:Function):void
+			{
+				
+				showProgress("Registering Image",100);
+				imageController.add_ws_image(img, function(evt:ResultEvent):void
+				{
+					hideProgress();
+					img.image_ID = Number(extractResultResult(evt));
+					SlideAdderModel.getInstance().recentlyAddedSlides.addItem(new WSImageUtils().clone(img));
+					completeFunc(img);
+				
+				});
+			}
+			
+			private function updateImage(toUpdate:WSImage, completeFunc:Function):void
+			{
+				showProgress("Updating Image",100);
+				imageController.update_ws_images_by_image_ID(toUpdate, function(evt:ResultEvent):void
+				{
+					hideProgress();
+					for each (var recentlyAddedSlide:WSImage in SlideAdderModel.getInstance().recentlyAddedSlides)
+					{
+						if(recentlyAddedSlide.image_ID == toUpdate.image_ID)
+						{
+							recentlyAddedSlide = toUpdate;
+						}
+					}
+					completeFunc(toUpdate);
+				});
+			}
+			
+			private var progressHelper:ProgressBarHelper
+			private function showProgress(message:String, perc:Number = 100):void
+			{
+				if(!progressHelper){progressHelper = new ProgressBarHelper(progressBar)};
+				progressHelper.enableProgress(message,perc);
+			}
+			private function hideProgress():void
+			{
+				progressHelper.disableProgress();
+			}
+			
+			
+
+			protected function cc_creator_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+				cc_creator.addEventListener(SlideEvent.EVENT_REGISTER_SLIDE,onEVENT_REGISTER_SLIDE);
+				cc_creator.addEventListener(SlideEvent.EVENT_UPDATE_SLIDE,onEVENT_UPDATE_SLIDE);
+			}
+
+			private function onEVENT_GO_BACK(event:Event):void
+			{
+				goToState(lastState);
+			}
+
+			private function onEVENT_SHOW_KEYWORD_DETAILS(event:ImageEvent):void
+			{
+				event.stopImmediatePropagation();
+				SlideAdderModel.getInstance().selectedImage = event.image;
+				goToState("keywords");
+			}
+
+			private function onEVENT_UPDATE_SLIDE(event:SlideEvent):void
+			{
+				if(event.bitmapData == null)return;
+				var slide:WSImage = event.slide; 
+				uploadImage(event.bitmapData,slide.image_filename,function(url:String,size:int):void
+				{
+					slide.image_size = size;
+					updateImage(slide, function(updated:WSImage):void
+					{
+						dispatchEvent(new SlideEvent(SlideEvent.EVENT_SLIDE_UPDATED,updated, null, true));
+						event.callback();
+					});
+				});
+			}
+
+			private function onEVENT_REGISTER_SLIDE(event:SlideEvent):void
+			{
+				if(event.bitmapData == null)return;
+					trace("Set to signed in contributor");
+					var slide:WSImage = event.slide; 
+					var fileName:String = getNewSlideImageFileName("1");
+					uploadImage(event.bitmapData,fileName,function(url:String,size:int):void
+					{
+						slide.image_url = url;
+						slide.image_size = size;
+						slide.image_filename = fileName;
+						registerImage(slide, function(regged:WSImage):void
+						{
+							
+							dispatchEvent(new SlideEvent(SlideEvent.EVENT_SLIDE_REGISTERED,regged, null, true));
+							event.callback();
+							
+						});
+					});
+				
+			}
+
+			
+
+			private function onEVENT_SHOW_IMAGE_DETAILS(event:ImageEvent):void
+			{
+				event.stopImmediatePropagation();
+				SlideAdderModel.getInstance().selectedImage = event.image;
+				goToState("details");
+				
+			}
+
+			private function onEVENT_GO_TO_SLIDE_LIST(event:Event):void
+			{
+				goToState("slideList");
+			}
+
+
+			protected function btn_saveImageDetails_clickHandler(event:MouseEvent):void
+			{
+				updateImage(cc_imageDetails.wordSmartImage,function(updated:WSImage):void
+				{
+					dispatchEvent(new SlideEvent(SlideEvent.EVENT_SLIDE_UPDATED,updated, null, true));
+						
+				}); 
+			}
+
+		]]>
+	</fx:Script>
+<s:states>
+	<s:State name="disabled"/>
+	<s:State name="start"/>
+	<s:State name="create"/>
+	<s:State name="details"/>
+	<s:State name="slideList"/>
+	<s:State name="keywords"/>
+</s:states>
+	<s:DataGroup includeIn="start" width="100%" height="100%" dataProvider="{new ArrayCollection(getStartInfo())}">
+		<s:layout>
+			<s:VerticalLayout gap="10" verticalAlign="middle" horizontalAlign="center"/>
+		</s:layout>
+		<s:itemRenderer>
+			<fx:Component >
+				<s:ItemRenderer>
+					<buttons:WSIconButton width="220" height="60" fontWeight="bold" fontSize="12" label="{data.long_label}" icon="{data.icon}"   click="wsiconbutton1_clickHandler(data.state)">
+						<fx:Script>
+							<![CDATA[
+								protected function wsiconbutton1_clickHandler(state:String):void
+								{
+									outerDocument.goToState(state);
+								}
+							]]>
+						</fx:Script>
+					</buttons:WSIconButton>
+				</s:ItemRenderer>
+			</fx:Component>
+		</s:itemRenderer>
+	</s:DataGroup>
+	
+	<image:WordSmartSlideCreator includeIn="create" id="cc_creator" width="100%" height="100%" creationComplete="cc_creator_creationCompleteHandler(event)">
+		
+	</image:WordSmartSlideCreator>
+	
+	<image:WordSmartImageDetails2 wordSmartImage="{SlideAdderModel.getInstance().selectedImage}" includeIn="details" id="cc_imageDetails" width="100%" height="100%">
+		
+	</image:WordSmartImageDetails2>
+	
+	
+	<s:VGroup width="100%" height="100%" includeIn="slideList">
+		<!--<image:MyImagesAddedFinder width="100%" height="100%">
+			
+		</image:MyImagesAddedFinder>-->
+		<slide:MySlidesList  width="100%" height="100%">
+			
+		</slide:MySlidesList>
+	</s:VGroup>
+	<s:VGroup width="100%" height="100%" includeIn="keywords">
+		<slide:WordSmartSlideKeywordList wordSmartImage="{SlideAdderModel.getInstance().selectedImage}" width="100%" height="100%">
+			
+		</slide:WordSmartSlideKeywordList>
+	</s:VGroup>
+	
+	<views:ProgressBar width="100%" id="progressBar" mode="manual" labelPlacement="center" enabled="false" includeInLayout="false" visible="false"/>
+	
+	
+</s:Group>

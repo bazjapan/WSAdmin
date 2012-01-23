@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<fx:Metadata>
+		[Event(name="keywordChange",type="flash.events.Event")]
+	</fx:Metadata>
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.dto.nested.KeywordTranslation;
+			import jp.wordsmart.events.CBEvent;
+			import jp.wordsmart.json.controllers.WSKeywordController;
+			import jp.wordsmart.utils.jsonhelpers.KeywordTranslationResultHelper;
+			import jp.wordsmart.utils.keyword.equivalentStringToCollection;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.NavigatorContent;
+			import spark.components.TextArea;
+			
+			import ui.titlewindows.CollapsibleTitleWindow;
+			import ui.titlewindows.SuperTitleWindowSkin;
+			
+			import utils.timestamp.dateToTimeStampUTC;
+			
+			import views.language.LanguageChooser;
+			public static const KEYWORD_CHANGE_EVENT:String = "keywordChange";
+			
+			private var _keyword:WSKeyword;
+			private var keywordDetailsAndAudioPanels:Array;
+
+			[Bindable(event="keywordChange")]
+			public function get keyword():WSKeyword
+			{
+				return _keyword;
+			}
+
+			public function set keyword(value:WSKeyword):void
+			{
+				if (_keyword != value)
+				{
+					_keyword = value;
+					dispatchEvent(new Event(KEYWORD_CHANGE_EVENT));
+					addLanguagesToStack();
+					//remove any equivalent pop - now not needed! PopUpManager.removePopUp(ep);
+				}
+			}
+			
+			private var defaultTextArea:TextArea//this is the english text area the other language will need to keep an eye on this.
+			private function addLanguagesToStack():void
+			{
+				tn_languageNavigator.removeAllChildren();
+				keywordDetailsAndAudioPanels = [];
+				var kwd:KeywordDetailsAndAudio = prepareKeywordDetailsAndAudioPanel(keyword.keyword_ID, keyword.keyword_text, keyword.keyword_language, keyword.keyword_equivalents);
+				kwd.baseLanguageCode = keyword.keyword_language;
+				wrapNavContent(keyword.keyword_language, kwd);
+				tn_languageNavigator.addChild(wrapNavContent(keyword.keyword_language, kwd));	
+				defaultTextArea = kwd.ta_keyword_text;
+				
+					var jAdded:Boolean;
+				var translations:Array = new KeywordTranslationResultHelper().convertToArray(keyword.keyword_translations);
+				for each (var obj:KeywordTranslation in translations)
+				{
+				var trans:KeywordDetailsAndAudio = prepareKeywordDetailsAndAudioPanel(keyword.keyword_ID, obj.translation_text,obj.translation_language, obj.translation_equivalents);
+				tn_languageNavigator.addChild(wrapNavContent(obj.translation_language, trans));
+				trans.baseLanguageTextArea = defaultTextArea;
+				trans.baseLanguageCode = keyword.keyword_language;
+				}
+				
+				onReady()
+			}
+			
+			private function prepareKeywordDetailsAndAudioPanel(keyword_ID:Number,text:String, lang:String, equivs:String):KeywordDetailsAndAudio
+			{
+				var kwd:KeywordDetailsAndAudio = new KeywordDetailsAndAudio();
+				kwd.keyword_ID = keyword_ID;
+				kwd.addEventListener("REQUEST_TRANSLATION", function(evt:CBEvent):void
+				{
+					evt.stopImmediatePropagation();
+					evt.data = new Object;
+					evt.data.keyword = keyword;
+					evt.data.language = kwd.keyword_language;
+					dispatchEvent(evt.clone());
+					
+				});
+						
+				kwd.keyword_text = text;
+				kwd.keyword_language = lang;
+				kwd.keyword_equivalents = equivalentStringToCollection(equivs);
+				keywordDetailsAndAudioPanels.push(kwd);
+				
+				return kwd;
+				
+			}
+			private function wrapNavContent(label:String, item:KeywordDetailsAndAudio):NavigatorContent
+			{
+				var wrapper:NavigatorContent = new NavigatorContent;
+				var langObject:Object = languageCodeToLanguageObject(label);
+				wrapper.label = langObject.label;
+				wrapper.icon = langObject.icon;
+				wrapper.addElement(item);
+				return wrapper;
+				
+			}
+			private var lc:CollapsibleTitleWindow
+			public function addLanguage():void
+			{
+				if(!lc)
+				{
+				lc = new CollapsibleTitleWindow();
+				lc.setStyle("skinClass", SuperTitleWindowSkin);
+				
+				lc.title = "Choose Languages";
+				var inner:LanguageChooser = new LanguageChooser;
+				lc.addElement(inner);
+				inner.languagesNotToShow = [keyword.keyword_language];
+				inner.save = function(chosen:Array):void{
+					for each (var lang:String in chosen)
+					{
+						 var translation:KeywordDetailsAndAudio = prepareKeywordDetailsAndAudioPanel(keyword.keyword_ID,"", lang, "");
+						 translation.baseLanguageTextArea = defaultTextArea;
+						 translation.baseLanguageCode = keyword.keyword_language;
+						 tn_languageNavigator.addChild(wrapNavContent(lang, translation));
+					}
+				} 
+				lc.addEventListener(CloseEvent.CLOSE, function(evt:CloseEvent):void
+				{
+					PopUpManager.removePopUp(lc);
+				});
+				}
+				PopUpManager.removePopUp(lc);
+				PopUpManager.addPopUp(lc, this);
+			}
+			private function removeLanguage():void
+			{
+				keywordDetailsAndAudioPanels.splice(tn_languageNavigator.selectedIndex,1);
+				tn_languageNavigator.removeElementAt(tn_languageNavigator.selectedIndex);
+			}
+			
+			private var keywordController:WSKeywordController = new WSKeywordController(DomainSettings.API_URL);
+			public function save():void
+			{
+				var now:Date = new Date();
+				var allLanguages:Array = [];
+				for each (var panel:KeywordDetailsAndAudio in keywordDetailsAndAudioPanels)
+				{
+					var obj:Object = new Object;
+					obj["keyword_text"] = panel.keyword_text;
+					obj["keyword_language"] = panel.keyword_language;
+					obj["keyword_type"] = panel.keyword_type;
+					obj["keyword_status"] = panel.keyword_status;
+					obj["equivalents"] = panel.keyword_equivalents.source.join("|").toString();
+					allLanguages.push(obj);
+				}
+				var translations:Array = [];
+				for each (var lang:Object in allLanguages)
+				{
+					if(lang["keyword_language"] == keyword.keyword_language)
+					{
+						keyword.keyword_text = lang["keyword_text"]
+						keyword.keyword_type = lang["keyword_type"]
+						keyword.keyword_status = lang["keyword_status"]
+						keyword.keyword_equivalents = lang["equivalents"]
+						keyword.keyword_last_modified = dateToTimeStampUTC(now);
+					}
+					else
+					{
+						var translation:KeywordTranslation = new KeywordTranslation;
+						translation.translation_language = lang["keyword_language"];
+						translation.translation_text = lang["keyword_text"];
+						translation.translation_equivalents = lang["equivalents"];
+						translation.translation_status = lang["keyword_status"];
+						translation.last_modified = dateToTimeStampUTC(now);
+						translations.push(translation);
+					}
+				}
+				
+				var translationsJSON_string:String = JSON.encode(translations);
+				keyword.keyword_translations = translationsJSON_string;
+				
+				keywordController.update_ws_keywords_by_keyword_ID(keyword,function(evt:ResultEvent):void
+				{
+					trace("keyword updated");
+					trace(keyword.keyword_text);
+					trace(keyword.keyword_translations);
+				});
+			}
+			
+			private function onReady():void
+			{
+			tabbar.selectedIndex = 0;
+			}
+		
+		]]>
+	</fx:Script>
+	<s:BorderContainer height="28" width="100%" >
+		<s:layout>
+			<s:HorizontalLayout  paddingLeft="3" verticalAlign="middle"/>
+		</s:layout>
+		<mx:TabBar id="tabbar" dataProvider="{tn_languageNavigator}"/>
+		<mx:Image buttonMode="true" source="{IconLib.ADD_16}" width="16" height="16" visible="{keyword != null}" toolTip="Add language" click="{addLanguage()}"/>
+		<mx:Image buttonMode="true" source="{IconLib.DELETE_16}" width="16" height="16" visible="{keyword != null &amp;&amp; tn_languageNavigator.length &gt; 1 &amp;&amp; tn_languageNavigator.selectedIndex != 0}" toolTip="Remove language" click="{removeLanguage()}"/>
+	</s:BorderContainer>
+	<mx:ViewStack selectedIndex="0" id="tn_languageNavigator" width="100%" height="100%">
+		
+	</mx:ViewStack>
+</s:Group>

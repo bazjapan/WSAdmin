@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:HorizontalLayout  paddingLeft="2"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			
+			[Bindable]public var showBackButton:Boolean;
+			[Bindable]public var showListButton:Boolean;
+			[Bindable]public var showDownloadButton:Boolean;
+			[Bindable]public var showCreateButton:Boolean;
+			
+			protected function btn_goToList_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("EVENT_GO_TO_SLIDE_LIST",true));
+			}
+			
+			protected function btn_downloadImage_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+
+
+			protected function btn_goCreate_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("EVENT_GO_CREATE",true));
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:HGroup id="buttonGroup1">
+		<buttons:WSIconButton visible="{showCreateButton}" includeInLayout="{showCreateButton}" icon="{IconLib.DOC_EDIT_16}"  toolTip="Back to Editor" id="btn_goCreate" click="btn_goCreate_clickHandler(event)"  width="24" height="24" />
+		<buttons:WSIconButton visible="{showListButton}" includeInLayout="{showListButton}"  icon="{IconLib.LIST_BULLETS_16}" toolTip="Go to Slide List" id="btn_goToList" click="btn_goToList_clickHandler(event)"  width="24" height="24" />
+		<buttons:WSIconButton visible="{showDownloadButton}" icon="{IconLib.DOWN_16}" toolTip="Download as Image" id="btn_downloadImage" click="btn_downloadImage_clickHandler(event)"  width="24" height="24" />
+		<mx:VRule height="24"/>
+	</s:HGroup>
+</s:Group>

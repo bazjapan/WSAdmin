@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%" xmlns:buttons="views.buttons.*" xmlns:audio="views.audio.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.utils.audio.mp3.MP3InfoLoader;
+			import jp.wordsmart.utils.download.downloadToFileFromURL;
+			import jp.wordsmart.utils.popMessage;
+			import jp.wordsmart.utils.upload.uploadAudioToWordSmart;
+			
+			import mx.controls.Alert;
+			
+			import spark.events.TextOperationEvent;
+			
+			import utils.date.now;
+			import utils.timestamp.dateToTimeStampUTC;
+			import utils.validation.isURL;
+			
+			public var registerFunc:Function;
+			public var showTagger:Function;
+			public var showProgressFunc:Function;
+			public var hideProgressFunc:Function;
+			
+			
+			[Bindable]
+			private var startText:String = "Please type mp3 URL here.";
+			
+			[Bindable]
+			public var audio:WSAudio;
+			
+			[Bindable]
+			private var canQueue:Boolean;//entered url is valid
+			
+			[Bindable]
+			private var canSave:Boolean;//mp3 url is verified and WSAudio fields are sufficient; 
+			
+			[Bindable]
+			private var canDownload:Boolean;//mp3 url is verified
+			
+			
+			private var mp3InfoLoader:MP3InfoLoader;//used for verifying mp3s existence
+			
+			private function cc():void
+			{
+				if(!audio)
+				{
+					audio = getDefaultAudio();
+				}
+				mp3InfoLoader = new MP3InfoLoader();
+				audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_SUCCESS_EVENT,onAUDIO_LOADED_SUCCESS_EVENT);
+				audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_FAIL_EVENT, onAUDIO_LOADED_FAIL_EVENT);
+				audioPlayer.addEventListener(MiniAudioPlayer2.EVENT_DO_DOWNLOAD, onEVENT_DO_DOWNLOAD);
+				audio.audio_total_time = 0;
+				detailsForm.showAudioTagger = showTagger;
+			}
+
+			protected function ti_url_clickHandler(event:MouseEvent):void
+			{
+				if(ti_url.text == startText)
+				{
+					ti_url.text = "";
+				}
+			}
+			private function onAUDIO_LOADED_FAIL_EVENT(event:Event):void
+			{//player failed to load url
+				canSave = false;
+				audio.audio_total_time = audioPlayer.lastLoadedAudioLength;
+			}
+			private function onAUDIO_LOADED_SUCCESS_EVENT(event:Event):void
+			{//player successfully to load url
+				audio.audio_total_time = audioPlayer.lastLoadedAudioLength;
+			}
+			protected function verifyURL(event:MouseEvent):void
+			{
+				canQueue = false;
+				mp3InfoLoader.tryLoad(ti_url.text,true,function(result:String,info:MP3InfoLoader):void
+				{
+					if(result==MP3InfoLoader.MP3INFO_LOAD_SUCCESSFULL)
+					{
+					canSave = true;
+					canDownload = true;
+					var len:Number = info.lengthSeconds*1000;
+					if(audio.audio_total_time != len)
+					{
+					trace("length set "+len);	
+					audio.audio_total_time = len;
+					}
+					}
+					else
+					{
+					canDownload = false;
+					canSave = false;
+					}
+				});
+				
+				audioPlayer.queueAudio(ti_url.text,audio.audio_total_time,false);
+			}
+			
+			protected function ti_url_changeHandler(event:TextOperationEvent):void
+			{
+				canDownload = false;
+				canSave = false;
+				canQueue = isURL(ti_url.text);//if url is good allow to queue;
+			}	
+			protected function addAudioToRemote():void
+			{
+				//fill ya boots
+				downloadToFileFromURL(ti_url.text,
+				function(bytes:ByteArray):void
+				{
+					hideProgressFunc();
+					uploadAudioToWordSmart(bytes,
+						function(uploadURL:String):void
+						{
+							//prepare audio
+							audio.audio_orig_url = audioPlayer.audioURL;
+							audio.audio_size = bytes.length;
+							audio.audio_location = uploadURL;
+							audio.audio_isLocal = 1;
+							audio.audio_mime_type = "audio/mpeg";
+							
+							registerFunc(audio,function(audioWithID:WSAudio):void
+							{
+								canSave = false;
+								hideProgressFunc();
+								doRegisterComplete(audio);
+							});
+						},
+						function(perc:Number):void
+						{
+							showProgressFunc("Processing File",perc);
+						},
+						function()
+						{
+							Alert.show("Unable to Upload Audio", "Upload Error");
+						});
+				},
+				function(perc:Number):void
+				{
+					showProgressFunc("Processing File",perc);
+				},
+				function():void
+				{
+					hideProgressFunc();
+					Alert.show("Unable to Download Audio", "Upload Error");
+				});
+				
+			}
+			private function onEVENT_DO_DOWNLOAD(event:Event):void
+			{
+				
+			}
+			protected function btn_new_clickHandler(event:MouseEvent):void
+			{
+				audio.audio_tags = "";
+				ti_url.text = startText;
+				btn_new.visible = false;
+			}
+			
+			private function doRegisterComplete(audio:WSAudio):void
+			{
+				popMessage("Audio Added",2000,24,function():void
+				{
+				trace("popmessage closed");
+				ti_url.text = "";
+				}
+				)
+			}
+			
+
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" paddingLeft="3" paddingRight="3">
+			<s:TextInput toolTip="Type URL of MP3 File to Add" width="100%" id="ti_url" click="ti_url_clickHandler(event)" change="ti_url_changeHandler(event)" text="{startText}" />
+			<buttons:WSIconButton width="100" visible="{canQueue}" label="Queue Audio" icon="{IconLib.TARGET_16}" id="btn_verifyURL" click="verifyURL(event)" toolTip="Load Audio from URL"/>
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%" verticalAlign="top">
+			<audio:MiniAudioPlayer2 id="audioPlayer" useStealthyRequests="true" status_text="{''}" allowDownload="true"/>
+		</s:HGroup>
+		<s:VGroup width="100%" height="100%" >
+		<audio:AudioDetailsForm id="detailsForm" audio="{audio}" width="100%" height="100%">
+			
+		</audio:AudioDetailsForm>
+		</s:VGroup>
+		
+		<s:HGroup id="hg_controls" height="34" width="100%" paddingLeft="2" paddingRight="2">
+        		<s:HGroup width="100%" horizontalAlign="left">
+					<buttons:NewButton  id="btn_new" toolTip="New Audio From URL" click="btn_new_clickHandler(event)" visible="false"/>
+				</s:HGroup>	
+			<s:HGroup width="100%" height="100%">
+			</s:HGroup>
+        		<s:HGroup width="100%" horizontalAlign="right">
+					<buttons:SaveButton label="Add to WordSmart" toolTip="Add Audio" width="140" click="addAudioToRemote()" visible="{canSave}" />
+				</s:HGroup>	
+        </s:HGroup>	
+        
+	</s:VGroup>
+</s:Group>

@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--//using mpinfo check - but don't need to
+private var mp3infoLoader:MP3InfoLoader = new MP3InfoLoader();
+private function cc():void
+{
+audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_FAIL_EVENT, onAUDIO_LOADED_FAIL_EVENT);
+audioPlayer.addEventListener(MiniAudioPlayer2.AUDIO_LOADED_SUCCESS_EVENT,onAUDIO_LOADED_SUCCESS_EVENT);
+
+}
+private function mp3InfoCallback(resultConst:String, all:MP3InfoLoader):void
+{
+var url:String = ti_url.text;
+if(resultConst == MP3InfoLoader.MP3INFO_LOAD_SUCCESSFULL)
+{
+trace(all.lengthSeconds);
+audioPlayer.queueAudio(url,all.lengthSeconds*1000,cb_andPlay.selected);
+
+}
+else
+{
+trace("INFO Load Failed "+all.lengthSeconds);
+audioPlayer.queueAudio(url,all.lengthSeconds,cb_andPlay.selected);
+//mp3Player.play(ti_url.text, false);
+}
+}
+
+<audio:MiniAudioPlayer2 id="audioPlayer" useStealthyRequests="{true}" status_text="{'Some starting status text'}" />
+-->
+
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" xmlns:buttons="views.buttons.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:VerticalLayout paddingLeft="3" paddingRight="3" verticalAlign="middle" horizontalAlign="center"/>
+	</s:layout>
+	<s:states>
+		<s:State name="disabled"/>
+		<s:State name="stopped"/>
+		<s:State name="playing"/>
+		<s:State name="downloading"/>
+	</s:states>	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.utils.audio.mp3.MP3InfoLoader;
+			import jp.wordsmart.utils.audio.mp3.MP3Player;
+			
+			import utils.time.millisecondsToPrettyMinuteSecondString;
+			
+			public static const AUDIO_LOADED_SUCCESS_EVENT:String = "AUDIO_LOADED_SUCCESS_EVENT";
+			public static const AUDIO_LOADED_FAIL_EVENT:String = "AUDIO_LOADED_FAIL_EVENT";
+			public static const EVENT_DO_DOWNLOAD:String = "EVENT_DO_DOWNLOAD";
+			
+			public static const EVENT_AUDIO_PLAY_COMPLETE:String = "EVENT_AUDIO_PLAY_COMPLETE";
+			
+			private var allZeros:String = "00:00";
+			
+			[Bindable]
+			public var audioLengthString:String = allZeros;
+			
+			[Bindable]
+			private var currentPosition:String = allZeros;
+			
+			public var mp3Player:MP3Player;
+			private var mp3infoLoader:MP3InfoLoader;
+			
+			
+			public var soundWasLoadedCorrectly:Boolean//sanity check
+			
+			public var audioURL:String;
+			[Bindable]
+			public var allowDownload:Boolean;
+			[Bindable]
+			public var status_text:String = "Queue Audio to Play";
+			public var lastLoadedAudioLength:Number = 0;
+			public var useStealthyRequests:Boolean;
+			
+			private function cc():void
+			{
+				mp3infoLoader = new MP3InfoLoader();
+				mp3Player = new MP3Player;
+				mp3Player.addEventListener("Mp3PlayerTimeChange",onMp3PlayerTimeChange);
+				mp3Player.addEventListener(MP3Player.EVENT_IOERROR,onMp3PlayerIOERROR);
+				mp3Player.addEventListener(MP3Player.EVENT_LOADED,onMp3SoundLoaded);
+				mp3Player.addEventListener(MP3Player.EVENT_AUDIO_ENDED, onMp3AudioEnded);
+			}
+
+			
+			public function queueAudio(urlToQueue:String, audioLength:Number, andPlay:Boolean):void
+			{
+				resetTimes();
+				soundWasLoadedCorrectly = false;
+				isPaused = false;
+				audioURL = urlToQueue;
+				audioLengthString = millisecondsToPrettyMinuteSecondString(audioLength);
+				this.currentState = "stopped";
+				if(andPlay){
+					btn_play_clickHandler();
+				}
+			}
+			
+			private function stopAllSounds():void
+			{
+				flash.media.SoundMixer.stopAll();
+			}
+			
+			private function onMp3SoundLoaded(event:Event):void
+			{
+				trace("onMp3SoundLoaded "+mp3Player.length)
+				soundWasLoadedCorrectly = true;
+				lastLoadedAudioLength = mp3Player.length;
+				audioLengthString = millisecondsToPrettyMinuteSecondString(mp3Player.length);
+				dispatchEvent(new Event(AUDIO_LOADED_SUCCESS_EVENT));
+			}
+			private function onMp3PlayerTimeChange(event:Event):void
+			{
+				if(mp3Player.playing)
+				{
+				currentPosition = mp3Player.timePretty;
+				}
+			}
+			private function onMp3PlayerIOERROR(event:Event):void
+			{
+				disable("Unable to load audio.");
+				lastLoadedAudioLength = 0;
+				soundWasLoadedCorrectly = false;
+				dispatchEvent(new Event(AUDIO_LOADED_FAIL_EVENT));
+			}
+			
+			private function onMp3AudioEnded(event:Event):void
+			{
+				currentPosition = allZeros;
+				isPaused = false;
+				updateUIState();
+				dispatchEvent(new Event(EVENT_AUDIO_PLAY_COMPLETE));
+			}
+			
+			public function btn_play_clickHandler(event:MouseEvent = null):void
+			{
+				if(isPaused)
+				{
+				mp3Player.unpause();
+				}
+				else
+				{
+				mp3Player.play(audioURL,useStealthyRequests);
+				}
+				updateUIState();
+			}
+			private var isPaused:Boolean
+			protected function btn_pause_clickHandler(event:MouseEvent):void
+			{
+				if(mp3Player.playing)
+				{
+					mp3Player.pause();
+					isPaused = true;
+				}
+				else
+				{
+					mp3Player.unpause();
+					isPaused = false;
+					
+				}
+				updateUIState();
+			}
+			
+			
+			protected function btn_stop_clickHandler(event:MouseEvent):void
+			{
+				currentPosition = allZeros;
+				mp3Player.stop();
+				isPaused = false;
+				updateUIState();
+			}
+			
+			protected function btn_download_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event(EVENT_DO_DOWNLOAD));
+				
+			} 
+			
+			public function disable(reason:String = ""):void
+			{
+				this.currentState = "disabled";
+				status_text = reason;
+			}
+			private function resetTimes():void
+			{
+				currentPosition = allZeros;
+				audioLengthString = allZeros;
+			}
+			private function updateUIState():void
+			{
+				if(mp3Player.playing)
+				{
+					currentState = "playing";
+				}
+				else
+				{
+					currentState = "stopped";
+				}
+			}
+			
+			public function getData():ByteArray
+			{
+				return mp3Player.getData();
+			}
+			
+			
+			
+		]]>
+	</fx:Script>
+	<s:HGroup includeIn="disabled" width="100%" height="100%"  verticalAlign="middle">
+		<s:Label id="lb_status" text="{status_text}" width="100%" fontWeight="bold" height="100%" verticalAlign="middle"/>
+	</s:HGroup>	
+	<s:HGroup includeIn="stopped" width="100%" height="100%" verticalAlign="middle">
+		<buttons:WSIconButton icon="{IconLib.PLAY_16}" width="80" label="Play" id="btn_play" click="btn_play_clickHandler(event)"/>	
+		<buttons:WSIconButton icon="{IconLib.STOP_16}" width="70" label="Stop"  click="btn_stop_clickHandler(event)"/>
+		<s:VGroup verticalAlign="middle">
+			<s:Label text="{currentPosition+'  -  '+audioLengthString}" width="80"/>	
+		</s:VGroup>
+		
+		<buttons:WSIconButton icon="{IconLib.DOWNLOAD}" includeInLayout="{allowDownload}" visible="{allowDownload}" width="100" label="Download" click="btn_download_clickHandler(event)"/>
+	</s:HGroup>
+	<s:HGroup includeIn="playing" width="100%" height="100%" verticalAlign="middle">
+		<buttons:WSIconButton icon="{IconLib.PAUSE_16}" width="80" label="Pause" id="btn_pause" click="btn_pause_clickHandler(event)"/>
+		<buttons:WSIconButton  icon="{IconLib.STOP_16}" width="70" label="Stop"  click="btn_stop_clickHandler(event)"/>
+		<s:VGroup verticalAlign="middle">
+			<s:Label text="{currentPosition+'  -  '+audioLengthString}" width="80"/>	
+		</s:VGroup>
+		<buttons:WSIconButton  icon="{IconLib.DOWNLOAD}" includeInLayout="{allowDownload}" visible="{allowDownload}" width="100" label="Download" click="btn_download_clickHandler(event)"/>
+	</s:HGroup>
+	
+	
+</s:Group>

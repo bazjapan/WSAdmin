@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.dto.AudioRequest;
+			import jp.wordsmart.dto.TranslationRequest;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.events.CBEvent;
+			import jp.wordsmart.json.controllers.AudioRequestController;
+			import jp.wordsmart.json.controllers.TranslationRequestController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.jsonhelpers.AudioRequestResultHelper;
+			import jp.wordsmart.utils.jsonhelpers.TranslationRequestResultHelper;
+			
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.TextArea;
+			
+			import views.request.translation.renderer.TranslationRequestSimple;
+			
+			
+			
+			public var keyword_ID:Number;
+			public var source_language:String//language code
+			public var translation_language:String//language code
+			
+			
+			
+			[Bindable]
+			public var requests:ArrayCollection = new ArrayCollection;
+			
+			private var requestController:TranslationRequestController = new TranslationRequestController(DomainSettings.API_URL);
+			
+			private function cc():void
+			{
+				this.addEventListener("EDIT_TRANSLATION_REQUEST",onEDIT_REQUEST);
+				this.addEventListener("REMOVE_TRANSLATION_REQUEST",onREMOVE_REQUEST);			
+				this.addEventListener("MARK_TRANSLATION_REQUEST_FULLFILLED",onMARK_REQUEST_FULLFILLED);			
+			}
+			
+			private function onMARK_REQUEST_FULLFILLED(event:CBEvent):void
+			{
+				requestController.update_translation_request(event.data,function(evt:ResultEvent):void
+				{
+					event.playCallbacks(true);	
+				});
+			}
+			
+			private function onREMOVE_REQUEST(event:CBEvent):void
+			{
+				requestController.remove_request_by_id(event.data.request_ID,function(evt:ResultEvent):void
+				{
+					event.playCallbacks(true);	
+				});
+			}
+			
+			private function onEDIT_REQUEST(event:CBEvent):void
+			{
+				dispatchEvent(new CBEvent("OPEN_TRANSLATION_REQUESTER",[
+					function():void
+					{
+						trace("callback in trans request list");
+						event.playCallbacks(true);	
+						refresh_requests();
+					}
+				], {'translation_request':event.data,'source_text':event.data['keyword']['keyword_text']}, true));
+				
+			}
+			
+			public function add_request(source_text:String):void
+			{
+				var recordingInfo:TranslationRequest = new TranslationRequest;
+				recordingInfo.source_language = source_language;
+				recordingInfo.target_language = translation_language;
+				recordingInfo.keyword_ID = keyword_ID;
+				
+				dispatchEvent(new CBEvent("OPEN_TRANSLATION_REQUESTER",
+					[
+						function():void
+						{
+							refresh_requests();
+						}
+					], 
+					{'translation_request':recordingInfo,'source_text':source_text}, true));
+				
+			}
+			
+			
+			public function refresh_requests():void
+			{
+				requests = new ArrayCollection;
+				requestController.get_request_by_keywordID_and_target(keyword_ID,translation_language, function(evt:ResultEvent):void
+				{
+					requests.source = new TranslationRequestResultHelper().convertToArray(evt.result.toString());
+				});
+			}
+			
+		
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:List width="100%" height="100%" dataProvider="{requests}" itemRenderer="views.request.translation.renderer.TranslationRequestSimple" useVirtualLayout="false">
+		
+	</s:List>
+</s:Group>

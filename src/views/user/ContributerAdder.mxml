@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  creationComplete="cc(event)"  xmlns:language="views.language.*" xmlns:user="views.user.*" xmlns:controls="com.adobe.flex.extras.controls.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	
+	<s:states>
+		<s:State name="details"/>
+		<s:State name="audio"/>
+		<s:State name="written"/>
+	</s:states>
+	
+
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.json.controllers.UserController;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			import jp.wordsmart.utils.language.dialectCodetoLanguageObject;
+			
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.Label;
+			
+			import ui.titlewindows.CollapsibleTitleWindow;
+			import ui.titlewindows.SuperTitleWindowSkin;
+			
+			import utils.string.stringIsNumber;
+			
+			import views.language.LanguageChooser;
+
+	
+			[Bindable]
+			public var contributor:Contributer;
+			
+			public var registerSuccessFunc:Function
+			
+			protected function cc(event:FlexEvent):void
+			{
+			//here
+				contributor = new Contributer;
+				cc_details.setContributer(contributor);
+				
+			}
+			
+			
+
+
+			
+
+			
+		
+			private function showLanguageChoices(excludes:Array, callback:Function):void
+			{
+					var lc:CollapsibleTitleWindow = new CollapsibleTitleWindow();
+					lc.setStyle("skinClass", SuperTitleWindowSkin);
+					lc.title = "Choose Language";
+					var inner:LanguageChooser = new LanguageChooser;
+					inner.languagesNotToShow = excludes;
+					inner.showControls = false;
+					lc.addElement(inner);
+					
+					
+					inner.addEventListener("LANGUAGE_SELECTED_EVENT", function(evt:Event):void
+					{
+						trace(evt.currentTarget);
+						trace(evt.target["languageObject"]);
+						callback(evt.target["languageObject"]);
+						PopUpManager.removePopUp(lc);
+					});
+					
+					lc.addEventListener(CloseEvent.CLOSE, function(evt:CloseEvent):void
+					{
+						PopUpManager.removePopUp(lc);
+					});
+			
+					PopUpManager.removePopUp(lc);
+					PopUpManager.addPopUp(lc, this);
+			}
+			
+			private function register():void
+			{
+				cc_written.saveContributer();	
+				cc_languages.saveContributer();
+				cc_details.saveContributer();
+				//set default base keyword
+				contributor.user_default_keyword_languages = dialectCodetoLanguageObject(contributor.user_native_dialect_code)["value"];
+				var uc:UserController = new UserController(getServiceBaseURL());
+				if(contributor.ID)
+				{
+					uc.update_contributer(contributor, function(evt:ResultEvent):void
+					{
+						trace("your profile has been updated")
+					});
+				}
+				else
+				{
+				uc.register_contributer(contributor, function(evt:ResultEvent):void
+				{
+					if(stringIsNumber(evt.result.toString()))
+					{
+					contributor.ID = evt.result.toString();
+					registerSuccessFunc(contributor)
+					}
+					else
+					{
+							Alert.show("Unable to register");
+					}
+				});
+				}
+				
+			}
+				
+	
+
+
+			protected function cc_languages_creationCompleteHandler(event:FlexEvent):void
+			{
+				cc_languages.setContributer(contributor);
+			}
+
+
+			protected function cc_written_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+				cc_written.setContributer(contributor);
+			}
+
+
+			
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	<user:ContributorDetails  id="cc_details" includeIn="details" height="100%"/>
+	<user:ContributerAudioLanguages creationComplete="cc_languages_creationCompleteHandler(event)" height="100%" id="cc_languages" showLanguageChoices="{showLanguageChoices}" includeIn="audio"/>
+	<user:ContributerWrittenLanguagePairs creationComplete="cc_written_creationCompleteHandler(event)" height="100%" id="cc_written" showLanguageChoices="{showLanguageChoices}" includeIn="written"/>
+	
+	<s:HGroup width="100%" verticalAlign="middle" horizontalAlign="right">
+		<s:HGroup includeIn="details" width="100%" verticalAlign="middle" gap="10">
+			<mx:Spacer width="32" height="32"/>
+			<s:Label text="1 of 3" fontWeight="bold"/>	
+		</s:HGroup>
+		<s:HGroup includeIn="audio" width="100%"  verticalAlign="middle"  gap="10">
+			<mx:Image  includeIn="audio" buttonMode="true" source="{IconLib.BACK_32}" width="32" height="32" toolTip="Back to Details"  click="{currentState = 'details'}"/>
+			<s:Label text="2 of 3" fontWeight="bold"/>	
+		</s:HGroup>
+		<s:HGroup includeIn="written" width="100%" verticalAlign="middle" gap="10">
+			<mx:Image  includeIn="written" buttonMode="true" source="{IconLib.BACK_32}" width="32" height="32" toolTip="Back to Audio Lanuages"  click="{currentState = 'audio'}"/>
+			<s:Label text="3 of 3" fontWeight="bold"/>	
+		</s:HGroup>
+		
+		<s:Label visible="{cc_details.isValid}" includeIn="details" click="{currentState = 'audio'}" text="Add Audio Languages" paddingRight="5" fontWeight="bold"/>
+		<mx:Image visible="{cc_details.isValid}" includeIn="details" buttonMode="true" source="{IconLib.FWD_32}" width="32" height="32" toolTip="Add Audio Languages"  click="{currentState = 'audio'}"/>
+		
+		<s:Label visible="{cc_languages.isValid}" includeIn="audio" click="{currentState = 'written'}" text="Add Translation Languages" paddingRight="5" fontWeight="bold"/>
+		<mx:Image visible="{cc_languages.isValid}" includeIn="audio" buttonMode="true" source="{IconLib.FWD_32}" width="32" height="32" toolTip="Next"  click="{currentState = 'written'}"/>
+		
+		
+		<s:Label visible="{cc_languages.isValid}" includeIn="written" click="{register()}" text="Complete Registration" paddingRight="5" fontWeight="bold"/>
+		<mx:Image visible="{cc_languages.isValid}" includeIn="written" buttonMode="true" source="{IconLib.CONTACT_CARD_32}" width="32" height="32" toolTip="Register" click="register()"/>
+	</s:HGroup>	
+</s:Group>

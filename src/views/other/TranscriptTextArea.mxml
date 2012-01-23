@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		
+	</fx:Declarations>
+	<fx:Metadata>
+		[Event(name="change",type="spark.events.TextOperationEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+		
+			
+			import jp.wordsmart.assets.IconLib;
+			
+			import spark.events.TextOperationEvent;
+			
+			private function cc():void
+			{
+				this.swapElements(textControls,textArea);
+			
+			}
+			
+			private var _text:String
+			[Bindable]
+			public function get text():String
+			{
+				return _text;
+			}
+
+			[Bindable(event="keywordChange")]
+			public function set text(value:String):void
+			{
+				_text = value;
+			}
+			
+
+			public function get textArea():spark.components.TextArea
+			{
+				return _textArea;
+			}
+
+			public function set textArea(value:TextArea):void
+			{
+				_textArea = value;
+			}
+			
+			protected function btn_decreaseTextSize_clickHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+				var currentSize:int = textArea.getStyle("fontSize");
+				var newSize:int = currentSize-2;
+				if(newSize>9)
+				{
+					textArea.setStyle("fontSize", newSize);
+				}
+			}
+			
+			
+			protected function btn_increaseTextSize_clickHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+				var currentSize:int = textArea.getStyle("fontSize");
+				var newSize:int = currentSize+2;
+				if(newSize<72)
+				{
+					textArea.setStyle("fontSize", newSize);
+				}
+			}
+
+			
+
+			
+			
+			protected function _textArea_changeHandler(event:TextOperationEvent):void
+			{
+				//var te:Event = event.clone()
+					//dispatchEvent(te);
+				text = _textArea.text;
+			}
+
+		]]>
+	</fx:Script>
+	<s:HGroup id="textControls" verticalAlign="bottom" horizontalAlign="right" paddingRight="2" paddingBottom="2" width="100%" height="100%">
+		<mx:Image buttonMode="true" toolTip="{'Decrease text size'}" source="{IconLib.MINUS_16}" width="16" height="16"   id="btn_decreaseTextSize" click="btn_decreaseTextSize_clickHandler(event)"/>
+		<mx:Image buttonMode="true" toolTip="{'Increase text size'}" source="{IconLib.ADD_16}" width="16" height="16"  id="btn_increaseTextSize" click="btn_increaseTextSize_clickHandler(event)"/>
+	</s:HGroup>
+	<s:TextArea id="_textArea" text="{text}"  change="_textArea_changeHandler(event)">
+		
+	</s:TextArea>
+</s:Group>

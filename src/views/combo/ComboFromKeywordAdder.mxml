@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="532" height="204" creationComplete="cc()" xmlns:buttons="views.buttons.*" xmlns:image="image.*">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center" paddingBottom="3" paddingLeft="3" paddingRight="3" paddingTop="3"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.combo.ComboAdderViewModel;
+			import jp.wordsmart.utils.ItemsDroppedOnComponent;
+			import jp.wordsmart.utils.audio.playAudioFromURL;
+			
+			import mx.events.CloseEvent;
+			import mx.events.DragEvent;
+			[Bindable]
+			public var view_model:ComboAdderViewModel;
+			
+			
+			private function cc():void
+			{
+				trace("is combo new ? "+isNaN(view_model.selected_combo.combo_ID))
+			}
+
+			
+
+			protected function btn_play_audio_clickHandler(event:MouseEvent):void
+			{
+				playAudioFromURL(view_model.audio.audio_location);
+			}
+
+
+			protected function btn_save_clickHandler(event:MouseEvent):void
+			{
+				view_model.save();
+				dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+			}
+
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%" height="100%">
+		<s:HGroup width="160" height="120">
+			<mx:Image width="100%" height="100%" source="{view_model.image.image_url}">
+				
+			</mx:Image>
+		</s:HGroup>
+		<s:HGroup width="160" height="120">
+			
+		</s:HGroup>
+		<s:HGroup width="160" height="120" verticalAlign="middle" horizontalAlign="center">
+			<s:VGroup width="100%" height="100%">
+			<mx:Image visible="{view_model.audio != null}"  buttonMode="true" width="16" height="16" source="{IconLib.PLAY_16}"  toolTip="Play" id="btn_play_audio" click="btn_play_audio_clickHandler(event)" />
+				<s:Label text="{view_model.audio.audio_rec_age}"/>					
+				<s:Label text="{view_model.audio.audio_rec_dia}"/>					
+				<s:Label text="{view_model.audio.audio_rec_gen}"/>					
+				<s:Label text="{view_model.audio.audio_meta}"/>					
+			</s:VGroup>
+		</s:HGroup>
+	</s:HGroup>
+	
+	<s:HGroup width="100%" height="30" paddingLeft="2" paddingRight="2" >
+    		<s:HGroup width="100%" horizontalAlign="left">
+    			
+    		</s:HGroup>	
+    		<s:HGroup width="100%" horizontalAlign="right">
+				<buttons:SaveButton enabled="{view_model.audio != null &amp;&amp; view_model.image != null}" id="btn_save" label="Save" click="btn_save_clickHandler(event)" />
+			
+    		</s:HGroup>	
+    	</s:HGroup>	
+    
+</s:TitleWindow>

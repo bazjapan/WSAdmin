@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="25" xmlns:language="views.language.*">
+<s:layout>
+	<s:VerticalLayout verticalAlign="middle" horizontalAlign="right">
+		
+	</s:VerticalLayout>
+</s:layout>
+
+
+
+<fx:Script>
+	<![CDATA[
+		import jp.wordsmart.assets.IconLib;
+		
+		import mx.collections.ArrayCollection;
+		
+		import spark.events.IndexChangeEvent;
+
+		
+
+	]]>
+</fx:Script>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			import utils.object.isNull;
+			
+			[Bindable]
+			public var source_lang:Object;
+			[Bindable]
+			public var dest_lang:Object;
+			[Bindable]
+			public var allowDelete:Boolean = true;
+			
+			[Bindable]
+			public var type:String = "T"
+			
+			public var showLanguageChoices:Function;//params array of excludes + callback
+			
+			public function setTransPair(obj:Object):void
+			{
+				source_lang = languageCodeToLanguageObject(obj["src"]);
+				dest_lang = languageCodeToLanguageObject(obj["dest"]);
+				type = obj["type"];
+				dd_type.setType(type);
+				updateType();
+			}
+			public function getTransPair():Object
+			{
+				if(!source_lang)return null;
+				if(!dest_lang)return null;
+			return {"src":source_lang['value'], "dest":dest_lang['value'], "type":dd_type.selectedType["value"].toString()}
+			}
+			
+			
+			protected function btn_source_language_clickHandler(event:MouseEvent):void
+			{
+				showLanguageChoices([],function(obj:Object):void
+				{
+					source_lang = obj;
+					updateType();
+				})
+			}
+			
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("REMOVE_ITEM_EVENT",true));
+			}
+			protected function btn_destination_language_clickHandler(event:MouseEvent):void
+			{
+				showLanguageChoices([],function(obj:Object):void
+				{
+					dest_lang = obj;
+					updateType();
+				})
+			}
+			private function updateType():void
+			{
+				dd_type.canToggle = true;
+				if(!source_lang)return;
+				if(!dest_lang)return;
+				
+				if(source_lang['value'] == dest_lang['value'])
+				{
+					dd_type.setType("P");
+					dd_type.canToggle = false;
+				}
+			}
+		]]>
+	</fx:Script>
+
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	
+	<s:HGroup width="100%"  verticalAlign="middle">
+		<s:HGroup width="100%" horizontalAlign="left">
+		<s:Button width="110" label="{isNull(source_lang)?'Source':source_lang['label']}" id="btn_source_language" click="btn_source_language_clickHandler(event)"/>
+		<mx:Image source="{dd_type.selectedType.value=='T'?IconLib.ARROW_RIGHT_16:IconLib.ARROW_TWO_HEAD_16}" width="16" height="16"/>
+		<s:Button width="110" label="{isNull(dest_lang)?'Destination':dest_lang['label']}" id="btn_destination_language" click="btn_destination_language_clickHandler(event)"/>
+		</s:HGroup>
+		<s:HGroup paddingLeft="3" verticalAlign="middle" paddingRight="1">
+		<language:TranslateProofIconToggle height="16" id="dd_type"/>
+		</s:HGroup>
+		<s:HGroup width="100%" paddingLeft="3" horizontalAlign="right" includeInLayout="{allowDelete}">
+		<mx:Image  includeInLayout="{allowDelete}" width="16" height="16" buttonMode="true" id="btn_remove" click="btn_remove_clickHandler(event)"  source="{IconLib.DELETE_16}" toolTip="Remove Item"/>
+		</s:HGroup>
+	</s:HGroup>
+		
+</s:Group>

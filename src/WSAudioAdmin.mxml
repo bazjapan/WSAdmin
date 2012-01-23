@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" xmlns:image="views.image.*" xmlns:audio="views.audio.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.pbsmediatech.json.utils.extractResultMessage;
+			
+			import jp.wordsmart.utils.popMessage;
+			
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			protected function get_audio_clickHandler(event:MouseEvent):void
+			{
+				getAudio();
+			}
+			
+			protected function save_audio_clickHandler(event:MouseEvent):void
+			{
+				audio_details.saveDetails();
+				audioCon.update_ws_audios_by_audio_ID(selected_audio, function(evt:ResultEvent):void
+				{
+					if(new WSAudioResultHelper().resultIsGood(extractResult(evt)))
+					{
+						popMessage("WSAudio Updated");
+					}
+					else
+					{
+						popMessage("Unable to Update WSAudio");
+					}
+				});
+				
+				
+			}
+			
+			
+			
+			protected function remove_audio_clickHandler(event:MouseEvent):void
+			{
+				if(selected_audio == null)return;
+				Alert.show("Are you sure you want to delete this Audio?","Delete Audio?", Alert.YES|Alert.NO, null,
+					function(ce:CloseEvent):void
+					{
+						if(ce.detail == Alert.YES)
+						{
+							this.enabled = false;
+							audioCon.remove_ws_audios_by_audio_ID(selected_audio, function(evt:ResultEvent):void
+							{
+								popMessage(extractResultMessage(evt));
+								wsaudios.removeItemAt(dg_images.selectedIndex);
+								//selected_audio = null;
+								this.enabled = true;
+							});
+							
+						}
+					});
+				
+			}
+			
+			
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import utils.date.now;
+			import jp.wordsmart.utils.download.downloadToFileFromURL;
+			import views.audio.AudioTagEditor;
+			import mx.containers.TitleWindow;
+			import mx.managers.PopUpManager;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.json.utils.WSAudioResultHelper;
+			import jp.wordsmart.json.controllers.WSAudioController;
+			import com.pbsmediatech.json.utils.extractResult;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.json.utils.WSImageResultHelper;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+			[Bindable]public var wsaudios:ArrayCollection = new ArrayCollection;
+			[Bindable]public var selected_audio:WSAudio;
+			private var audioCon:WSAudioController = new WSAudioController(DomainSettings.API_URL);
+			
+			private function cc():void
+			{
+				audio_player.addEventListener(MiniAudioPlayer2.EVENT_DO_DOWNLOAD,onEVENT_DO_DOWNLOAD);
+			}
+
+			private function onEVENT_DO_DOWNLOAD(event:Event):void
+			{
+				var type:String = "mp3";
+				downloadToFileFromURL(audio_player.audioURL,
+					function(bytes:ByteArray):void
+					{
+						
+						var fr:FileReference = new FileReference();
+						fr.save(bytes, "ws-audio-"+now().getTime().toString()+"."+type.toLowerCase());
+						
+					},
+					function(perc:Number):void
+					{
+						
+					},
+					function():void
+					{
+						
+						Alert.show("Unable to Download Audio", "Upload Error");
+						
+					});
+			}
+			
+			private function getAudio():void
+			{
+				audioCon.get_all_ws_audios(function(evt:ResultEvent):void
+				{
+					var results:Array = new WSAudioResultHelper().resultToArray(extractResult(evt));
+					wsaudios.source = results;
+				});
+			}
+			protected function dg_images_changeHandler(event:ListEvent):void
+			{
+				selected_audio = dg_images.selectedItem as WSAudio;
+				audio_player.queueAudio(selected_audio.audio_location, selected_audio.audio_total_time, false);
+				updateTagger(selected_audio);
+			}
+			private var tagWindow:TitleWindow;
+			private var lastX:int = -1;
+			private var lastY:int;
+			public function showAudioTagger(audio:WSAudio, closeFunc:Function, remove:Boolean = false):void
+			{
+				PopUpManager.removePopUp(tagWindow);
+				if(remove){return}
+				if(!tagWindow){tagWindow = new TitleWindow;
+					
+					tagWindow.addEventListener(CloseEvent.CLOSE, function(ce:CloseEvent):void
+					{
+						PopUpManager.removePopUp(tagWindow);
+						lastX = tagWindow.x;
+						lastY = tagWindow.y;
+						closeFunc();
+						
+					});
+					var te:AudioTagEditor = new AudioTagEditor();
+					tagWindow.addElement(te);		
+				}
+				else
+				{
+					lastX = tagWindow.x;
+					lastY = tagWindow.y;
+				}
+				
+				updateTagger(audio);
+				PopUpManager.addPopUp(tagWindow,this);
+				tagWindow.showCloseButton = true;
+				
+				if(lastX == -1)
+				{
+					PopUpManager.centerPopUp(tagWindow);
+				}
+				else
+				{
+					tagWindow.x = lastX;
+					tagWindow.y = lastY;
+				}
+				
+			}
+			
+			private function updateTagger(audio:WSAudio):void
+			{
+				if(tagWindow != null)
+				{
+				AudioTagEditor(tagWindow.getElementAt(0)).audio = audio;
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	<mx:VDividedBox width="100%" height="100%">
+		<s:VGroup width="100%" height="100%">
+			<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+				<s:HGroup width="100%" horizontalAlign="left">
+					<s:Label text="{'Total : '+wsaudios.length}"/>
+				</s:HGroup>	
+				<s:HGroup width="100%" horizontalAlign="right">
+					
+					<s:Button label="Get" id="get_audio" click="get_audio_clickHandler(event)"/>
+				</s:HGroup>	
+			</s:HGroup>	
+			<mx:DataGrid width="100%" height="100%" id="dg_images" dataProvider="{wsaudios}" change="dg_images_changeHandler(event)">
+				
+			</mx:DataGrid>
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%" enabled="{selected_audio != null}">
+			<audio:MiniAudioPlayer2 allowDownload="true" id="audio_player"/>
+			<s:VGroup width="100%" height="100%">
+			<audio:AudioDetailsForm width="100%" height="100%" id="audio_details" audio="{selected_audio}" showAudioTagger="{showAudioTagger}">
+				
+			</audio:AudioDetailsForm>
+			</s:VGroup>
+			
+			
+			
+			
+			<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+				<s:HGroup width="100%" horizontalAlign="left">
+					<s:Button id="remove_image" label="Remove" click="remove_audio_clickHandler(event)"/>
+				</s:HGroup>	
+				<s:HGroup width="100%" horizontalAlign="right">
+					<s:Button id="save_image" label="Save" click="save_audio_clickHandler(event)"/>
+				</s:HGroup>	
+			</s:HGroup>	
+			
+		</s:VGroup>
+	</mx:VDividedBox>
+	
+	
+	
+</s:WindowedApplication>

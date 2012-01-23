@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" height="90">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle"/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.events.CBEvent;
+			import jp.wordsmart.json.controllers.TranslationRequestController;
+			import jp.wordsmart.model.AppModel;
+			
+			import mx.rpc.events.ResultEvent;
+			
+			
+			
+			
+			
+			//--events
+			protected function btn_mark_done_clickHandler(event:MouseEvent):void
+			{
+				
+				data.request_fulfilled_by = AppModel.getInstance().signedInContributor.ID;
+				dispatchEvent(new CBEvent("MARK_TRANSLATION_REQUEST_FULLFILLED",
+					[
+						function():void{
+							var lab:Label = new Label;
+							lab.text = "Request completed by :"+AppModel.getInstance().signedInContributor.user_login;
+							labels.addElement(lab);
+							lab.setStyle("fontWeight","bold");
+							btn_mark_done.visible = false;
+							btn_remove.visible = false;
+						}
+				],data,true));
+			}
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new CBEvent("REMOVE_TRANSLATION_REQUEST",[function():void
+				{
+					var lab:Label = new Label;
+					lab.text = "Request removed by :"+AppModel.getInstance().signedInContributor.user_login;
+					labels.addElement(lab);
+					lab.setStyle("fontWeight","bold");
+					hg_controls.visible = false;
+					
+				}],data,true));
+					
+			}
+			
+			protected function btn_edit_trans_request_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new CBEvent("EDIT_TRANSLATION_REQUEST",[function():void
+				{
+					trace("EDIT_AUDIO_REQUEST - callback called in renderer");
+					
+				}],data,true));
+			}
+			//--//events
+			private function typeToString(type:String):String
+			{
+			if(type == "T")
+			{
+				return "Translate";
+			}
+			if(type == "P")
+			{
+				return "Proof";
+			}
+			return ""
+			}
+			
+		]]>
+	</fx:Script>
+	<s:BorderContainer width="100%" height="88">
+		<s:layout>
+			<s:VerticalLayout verticalAlign="middle"/>
+		</s:layout>
+	
+	<s:HGroup width="100%" paddingBottom="3" paddingTop="3" paddingLeft="10" paddingRight="10">
+		<s:VGroup id="labels" width="100%" gap="12">
+			<s:Label text="{'Requested by: '+data.requester_name}" fontWeight="bold"/>
+			<s:Label text="{'Requested date: '+data.request_date_added}" fontWeight="bold"/>
+			<s:Label text="{'Type: '+typeToString(data.request_type)}" fontWeight="bold"/>
+		</s:VGroup>
+		<s:VGroup paddingRight="3" width="100%" horizontalAlign="right" id="hg_controls" height="100%" verticalAlign="middle">
+			<mx:Image buttonMode="true" source="{IconLib.MARK_AS_DONE_32}" width="32" height="32" toolTip="Mark Request as Done" id="btn_mark_done" click="btn_mark_done_clickHandler(event)"/>
+			<s:HGroup>
+				<mx:Image  buttonMode="true" width="16" height="16" source="{IconLib.DOC_EDIT_16}" toolTip="Edit" id="btn_edit_audio_request" click="btn_edit_trans_request_clickHandler(event)"/>
+				<mx:Image buttonMode="true" source="{IconLib.DELETE_16}" width="16" height="16" toolTip="Delete Request"  visible="{data.requester_name == AppModel.getInstance().signedInContributor.user_login}" id="btn_remove" click="btn_remove_clickHandler(event)"/>
+			</s:HGroup>
+		</s:VGroup> 
+	</s:HGroup>
+	</s:BorderContainer>
+	
+	
+</s:ItemRenderer>

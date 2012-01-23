@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" 
+						  focusEnabled="true">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.dto.nested.KeywordTranslation;
+			import jp.wordsmart.events.AudioEvent;
+
+			import jp.wordsmart.utils.jsonhelpers.KeywordTranslationResultHelper;
+			import jp.wordsmart.utils.language.languageCodeToLanguageObject;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.controls.Button;
+			import mx.controls.Image;
+
+			
+			private var kw:WSKeyword;
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				kw = data as WSKeyword;
+				if(kw != null)
+				{
+					hg_trans.removeAllElements();
+					
+					var image:Image = new Image();
+					image.source= IconLib.MICROPHONE_16;
+					image.width=16; 
+					image.height=16; 
+					image.toolTip="Click Language to Record Audio";
+					hg_trans.addElement(image);
+					
+					addBaseLangButt();
+					showTransButts();
+						
+				}
+			
+			}
+			
+			private function addBaseLangButt():void
+			{
+				var butt:Image = new Image;
+				var languageObj:Object = languageCodeToLanguageObject(kw.keyword_language);
+				if(!languageObj)return;
+				butt.source = languageObj["icon"];
+				butt.toolTip = languageObj["label"];
+				butt.buttonMode = true;
+				butt.addEventListener(MouseEvent.CLICK, function(evt:MouseEvent):void
+				{
+					evt.stopImmediatePropagation();
+					
+					var da:WSAudio = getDefaultAudio();
+					da.audio_language = kw.keyword_language;
+					da.audio_transcript = kw.keyword_text;
+					dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO,da,true));
+					
+				});
+				hg_trans.addElement(butt);
+				
+				
+				
+			}
+			private function showTransButts():void
+			{
+				var translations:Array = new KeywordTranslationResultHelper().convertToArray(kw.keyword_translations);
+				for each (var trans:KeywordTranslation in translations)
+				{
+					var butt:Image = new Image;
+					var languageObj:Object = languageCodeToLanguageObject(trans.translation_language);
+					if(!languageObj)return;
+					butt.source = languageObj["icon"];
+					butt.toolTip = languageObj["label"];
+					butt.setStyle("translation", trans);
+					butt.buttonMode = true;
+					butt.addEventListener(MouseEvent.CLICK, function(evt:MouseEvent):void
+					{	evt.stopImmediatePropagation();
+						var tbutt:Image = evt.currentTarget as Image;
+						var translation:KeywordTranslation = tbutt.getStyle("translation");
+						//--------------
+						var da:WSAudio = getDefaultAudio();
+						da.audio_language = translation.translation_language;
+						da.audio_transcript = translation.translation_text;
+						dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO,da,true));
+						trace(translation.translation_language);
+					});
+					hg_trans.addElement(butt);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<s:HGroup paddingRight="3" paddingLeft="3" width="100%" id="hg_trans">
+		</s:HGroup>
+</s:MXDataGridItemRenderer>

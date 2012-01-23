@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  creationComplete="cc()" width="100%" height="100%" xmlns:textToImage="jp.wordsmart.components.textToImage.*" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout>
+			
+		</s:VerticalLayout>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.roguedevelopment.objecthandles.Flex4ChildManager;
+			import com.roguedevelopment.objecthandles.Flex4HandleFactory;
+			import com.roguedevelopment.objecthandles.ObjectHandles;
+			import com.roguedevelopment.objecthandles.VisualElementHandle;
+			import com.roguedevelopment.objecthandles.constraints.MovementConstraint;
+			import com.roguedevelopment.objecthandles.constraints.SizeConstraint;
+			import com.roguedevelopment.objecthandles.decorators.DecoratorManager;
+			
+			import jp.wordsmart.assets.IconLib;
+			
+			import mx.core.UIComponent;
+			import mx.events.ColorPickerEvent;
+			import mx.events.ResizeEvent;
+			import mx.graphics.codec.PNGEncoder;
+			import mx.utils.Base64Encoder;
+			
+			import spark.components.RichEditableText;
+			
+			import utils.number.randomWithinRange;
+			import utils.type.getType;
+			
+			
+			protected var objectHandles:ObjectHandles;
+			protected var decoratorManager:DecoratorManager;
+			
+			[Bindable]
+			private var bgColor:uint = 0xFFFFFF;
+			[Bindable]
+			private var text_bgColor:int = 0xFFFFFF;
+			[Bindable]
+			private var textColor:int = 0x000000;
+			[Bindable]
+			private var textAlpha:int = 10;
+			[Bindable]
+			private var textBGAlpha:int = 10;
+			[Bindable]
+			private var numTextFields:int = 0;
+			
+			
+			public var saveSnapShot:Function;
+			
+			[Bindable]
+			private var selected_textArea:ResizabelTextArea;
+			
+			[Bindable] protected var textModel:jp.wordsmart.components.textToImage.TextDataModel = new jp.wordsmart.components.textToImage.TextDataModel();
+			
+			private function cc():void
+			{
+			objectHandles = new ObjectHandles( mainGroup , 
+				null, 
+				new Flex4HandleFactory() , 
+				new Flex4ChildManager() );
+			
+			addText("Text",textColor,text_bgColor);
+			
+			
+			}
+			
+			
+			
+			
+			
+			
+			
+			protected function btn_increaseSize_clickHandler(event:MouseEvent):void
+			{if(!selected_textArea)return;
+				selected_textArea.increaseTextSize();
+			}
+			
+			
+			protected function btn_decreaseSize_clickHandler(event:MouseEvent):void
+			{if(!selected_textArea)return;
+				selected_textArea.decreaseTextSize();
+			}
+			
+			
+			protected function bg_colorpicker_changeHandler(event:ColorPickerEvent):void
+			{
+				bgColor = event.color;
+			}
+			protected function hs_alpha_changeHandler(event:Event):void
+			{
+				if(!selected_textArea)return;
+				textAlpha = value;
+				var value:Number = hs_alpha.value/10
+				selected_textArea.setTextAlpha(value);
+			}
+			protected function hs_bg_alpha_changeHandler(event:Event):void
+			{
+				if(!selected_textArea)return;
+				textBGAlpha = value;
+				var value:Number = hs_bg_alpha.value/10;
+				trace("setting background alpha "+value);
+				selected_textArea.setBackgroundAlpha(value);
+			}
+
+			
+			protected function mainGroup_clickHandler(event:MouseEvent):void
+			{
+				trace(getType(event.target))
+				
+				if(event.target is RichEditableText || event.currentTarget is VisualElementHandle){ 
+					
+					return;
+				} 
+				trace("clear")
+				selected_textArea = null;
+				objectHandles.selectionManager.clearSelection();
+			}
+			
+			
+			protected function text_colorPicker_changeHandler(event:ColorPickerEvent):void
+			{
+				if(!selected_textArea)return;
+				textColor = text_colorPicker.selectedColor
+				selected_textArea.textColor = text_colorPicker.selectedColor; 
+			}
+			private function addText(text:String, textColor:uint, text_bgColor:uint):void
+			{
+				var textModel:TextDataModel = new TextDataModel();
+				textModel.width = 200;
+				textModel.height = 100;
+				textModel.x = mainGroup.width/2 - (textModel.width/2)+randomWithinRange(10,50);
+				textModel.y = mainGroup.height/2-(textModel.height/2)+randomWithinRange(10,50);
+				
+				textModel.text = text;
+				
+				var textToAdd:ResizabelTextArea = new ResizabelTextArea();
+				textToAdd.fontSize = 50;
+				textToAdd.textColor= textColor;
+				textToAdd.bgColor = text_bgColor;
+				textToAdd.model = textModel;
+				textModel.currentLayerIndex = numTextFields;
+				textToAdd.addEventListener(MouseEvent.CLICK, function(evt:MouseEvent):void
+				{
+					selected_textArea = evt.currentTarget as ResizabelTextArea;
+					text_bgColor = selected_textArea.bgColor;
+					text_bg_colorPicker.selectedColor =text_bgColor;
+					textColor = selected_textArea.textColor;
+					text_colorPicker.selectedColor = textColor;
+					textBGAlpha = selected_textArea.bgAlpha*10;
+					textAlpha = selected_textArea.textAlpha*10;
+				});
+				mainGroup.addElement(textToAdd);
+				numTextFields++;
+				selected_textArea = textToAdd;
+				
+				objectHandles.registerComponent( textModel, textToAdd );
+				objectHandles.selectionManager.clearSelection();
+				objectHandles.selectionManager.addToSelected(textModel);
+				
+				
+				objectHandles.registerComponent( textModel, textToAdd,null,true,getContraints());
+				
+			}
+			private function getContraints():Array
+			{
+				var constraint:SizeConstraint = new SizeConstraint();
+				constraint.minWidth = 50;
+				constraint.maxWidth = mainGroup.width-20;
+				constraint.minHeight = 50;
+				constraint.maxHeight = mainGroup.height-20;
+				
+				var constraint2:MovementConstraint = new MovementConstraint();
+				constraint2.minX = 0;
+				constraint2.minY = 0;
+				constraint2.maxX = mainGroup.width-20;
+				constraint2.maxY = mainGroup.height;
+				
+				return [constraint, constraint2];
+			}
+			
+			public function takeSnapshot(target:UIComponent) :void
+			{
+				if(saveSnapShot == null)return;
+				saveSnapShot(target,function(message:String):void
+				{
+					//lb_status.text = message;
+				});
+			}
+			
+			
+			protected function btn_snapshot_clickHandler(event:MouseEvent):void
+			{
+				takeSnapshot(mainGroup);
+			}
+
+			
+
+
+			protected function text_bg_colorPicker_changeHandler(event:ColorPickerEvent):void
+			{	if(!selected_textArea)return;
+				text_bgColor = event.color;
+				selected_textArea.bgColor = event.color;
+			}
+			
+			
+
+
+			protected function btn_add_text_clickHandler(event:MouseEvent):void
+			{
+				addText("Text",textColor,text_bgColor);
+			}
+
+
+			protected function btn_remove_text_clickHandler(event:MouseEvent):void
+			{
+				if(!selected_textArea)return;
+				mainGroup.removeElement(selected_textArea);
+				numTextFields--;
+				selected_textArea = null;
+				objectHandles.selectionManager.clearSelection();
+				
+			}
+			
+
+			protected function btn_moveUP_clickHandler(event:MouseEvent):void
+			{
+				/* if(selected_textArea == null)return;
+				var oldZIndex:int = mainGroup.getElementIndex(selected_textArea);
+				var newZIndex:int = oldZIndex-1;
+				if(newZIndex >= 0)
+				{
+				mainGroup.setElementIndex(selected_textArea,newZIndex);
+				} */
+			}
+
+
+			protected function btn_moveDown_clickHandler(event:MouseEvent):void
+			{
+			/* 	if(selected_textArea == null)return;
+				var oldZIndex:int = mainGroup.getElementIndex(selected_textArea);
+				var newZIndex:int = oldZIndex+1;
+				if(newZIndex < mainGroup.numElements-1)
+				{
+					mainGroup.setElementIndex(selected_textArea,newZIndex);
+				} */
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:Group id="mainGroup" width="100%" height="100%" click="mainGroup_clickHandler(event)">
+		<s:Rect width="100%" height="100%">
+			<s:fill><s:SolidColor color="{bgColor}"/></s:fill>
+			<!--<s:stroke>
+				<s:SolidColorStroke color="0x000000" weight="1"/>
+			</s:stroke> -->
+		</s:Rect>
+		
+		<!--<textToImage:ResizabelTextArea fontSize="50" id="resizableText1" model="{textModel}" textColor="{textColor}" bgColor="{bgColor}"/>
+		-->
+	</s:Group>
+	<s:HGroup width="100%" height="30" paddingLeft="5" paddingRight="5">
+		<s:HGroup  verticalAlign="middle" height="100%" >
+		<mx:ColorPicker id="bg_colorPicker" change="bg_colorpicker_changeHandler(event)" selectedColor="{bgColor}" toolTip="Canvas Background Color"/>
+		
+		</s:HGroup>
+		
+		<s:HGroup enabled="{selected_textArea != null}"  horizontalAlign="center" width="100%" height="100%" verticalAlign="middle" paddingLeft="5">
+			
+			<s:HGroup enabled="{selected_textArea != null}"  verticalAlign="middle" horizontalAlign="left" height="100%" paddingRight="5">
+				<mx:Image buttonMode="true" source="{IconLib.MINUS_16}" width="16" height="16"  id="btn_decreaseSize" click="btn_decreaseSize_clickHandler(event)" toolTip="Decrease Selected Text Size"/>
+				<mx:Image buttonMode="true" source="{IconLib.ADD_16}" width="16" height="16"  id="btn_increaseSize" click="btn_increaseSize_clickHandler(event)" toolTip="Increase Selected Text Size"/>
+				
+			</s:HGroup>
+			<mx:ColorPicker id="text_colorPicker" change="text_colorPicker_changeHandler(event)" selectedColor="{textColor}" toolTip="Text Color"/>
+			<s:HSlider toolTip="Text Alpha" maximum="10" minimum="0" value="{textAlpha}" id="hs_alpha" change="hs_alpha_changeHandler(event)"/>
+			
+			<mx:ColorPicker id="text_bg_colorPicker" change="text_bg_colorPicker_changeHandler(event)" selectedColor="{text_bgColor}" toolTip="Text Background Color"/>
+			<s:HSlider toolTip="Text Background Alpha" maximum="10" minimum="0" value="{textBGAlpha}" id="hs_bg_alpha" change="hs_bg_alpha_changeHandler(event)"/>
+			<!--<mx:Image buttonMode="true" source="{IconLib.DOWN_16}" width="16" height="16"  id="btn_moveDown" click="btn_moveDown_clickHandler(event)" toolTip="Move Text Down"/>
+			<mx:Image buttonMode="true" source="{IconLib.UP_16}" width="16" height="16" id="btn_moveUP" click="btn_moveUP_clickHandler(event)" toolTip="Move Text Up"/>
+			-->
+		</s:HGroup>
+		<s:HGroup  height="100%" horizontalAlign="right">
+			<buttons:WSIconButton width="50" toolTip="Remove Selected Text Area" icon="{IconLib.DELETE_16}" id="btn_remove_text"  enabled="{selected_textArea != null}" click="btn_remove_text_clickHandler(event)"/>
+			<buttons:WSIconButton width="50" toolTip="Add Text Area" icon="{IconLib.ADD_16}" id="btn_add_text" click="btn_add_text_clickHandler(event)"/>
+			<buttons:WSIconButton width="50" toolTip="Add Snapshot to Image Tray" icon="{IconLib.PHOTO_16}" id="btn_snapshot" click="btn_snapshot_clickHandler(event)"/>
+		</s:HGroup>
+	</s:HGroup>
+</s:Group>

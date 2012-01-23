@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true">
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		
+	/* 	s|ToggleButton.iconButton {
+			skinClass: ClassReference("views.other.CustomIconButtonSkin");
+		} */
+	</fx:Style>
+	<fx:Script>
+		<![CDATA[
+			import views.other.CustomIconButtonSkin;
+			[Bindable]
+			public var languageObject:Object;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				languageObject = value;
+			} 
+			
+			protected function btn_language_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				languageObject['selected'] = btn_language.selected;
+				dispatchEvent(new Event("LANGUAGE_SELECTED_EVENT", true));
+			}
+			public function reset():void
+			{
+				languageObject['selected'] = false;
+				btn_language.selected = languageObject['selected'];
+			}
+		]]>
+	</fx:Script>
+
+	<s:ButtonBarButton width="150" height="100%" data="{languageObject}" skinClass="{CustomIconButtonSkin}" id="btn_language"  click="btn_language_clickHandler(event)">
+	</s:ButtonBarButton>
+</s:ItemRenderer>

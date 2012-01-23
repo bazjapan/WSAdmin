@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<titlewindows:CollapsibleTitleWindow  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+											   xmlns:s="library://ns.adobe.com/flex/spark" 
+											   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:collapsibleTitleWindow="ui.collapsibleTitleWindow.*" creationComplete="cc(event)"  width="555" height="494" title="Image Details" close="{PopUpManager.removePopUp(this)}" xmlns:titlewindows="ui.titlewindows.*">
+	<titlewindows:layout>
+		<s:VerticalLayout/>
+	</titlewindows:layout>
+
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.pbsmediatech.json.utils.JSONResultHelper2;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.events.AudioEvent;
+			import jp.wordsmart.json.controllers.ImageController;
+			import jp.wordsmart.model.AppModel;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import ui.titlewindows.AWindowSkin;
+			
+			import utils.url.openInBrowser;
+			
+			
+			
+			
+			
+			private var _selectedImage:WSImage;
+			
+			[Bindable]
+			public var listOfImages:ArrayCollection = new ArrayCollection;
+			
+			protected function cc(event:FlexEvent):void
+			{
+				this.setStyle("skinClass", AWindowSkin);
+			}
+			
+			private var imageController:ImageController = new ImageController(DomainSettings.API_URL);
+			
+
+			[Bindable]
+			public function get selectedImage():WSImage
+			{
+				return _selectedImage;
+			}
+
+			public function set selectedImage(value:WSImage):void
+			{
+				_selectedImage = value;
+			}
+
+			protected function btn_save_clickHandler(event:MouseEvent):void
+			{	
+				
+				myForm.enabled = false;
+				/* if(!cb_all.selected)
+				{ */
+				updateInfo(selectedImage);
+				saveImage(selectedImage);
+				//}
+				/* else
+				{
+					//save all images
+					for each (var img:WSImage in listOfImages)
+					{
+						updateInfo(img);
+						saveImage(img);
+					}
+				} */
+			}
+			
+			private function updateInfo(img:WSImage):void
+			{
+				img.title = ti_title.text;
+				img.content = ta_content.text;
+				img.image_tags = ta_tags.text;
+				img.copyright = ta_copyright.text;
+				
+			}
+				private function saveImage(image:WSImage):void
+				{
+					if(!isNaN(image.ID))
+					{
+						imageController.update_image(image, function(evt:ResultEvent):void
+						{
+							myForm.enabled = true;	
+						});	
+					}
+					
+					
+				}
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				if(selectedImage)
+				{
+				imageController.remove_image_by_id(selectedImage, function(evt:ResultEvent):void
+				{
+					var success:Boolean = new JSONResultHelper2().resultIsGood(evt.result as String);
+					if(success)
+					{
+						selectedImage.isLocal = 0;
+						dispatchEvent(new Event("IMAGE_REMOVED_EVENT"));
+						//PopUpManager.removePopUp(this)
+					}
+				});
+				}
+			}
+			
+			protected function btn_record_audio_clickHandler(event:MouseEvent):void
+			{
+				var da:WSAudio = getDefaultAudio();
+				da.audio_language = AppModel.getInstance().currentBaseLanguage;
+				da.audio_transcript = selectedImage.image_tags;
+				dispatchEvent(new AudioEvent(AudioEvent.EVENT_RECORD_AUDIO,da,true));
+			}
+
+			
+
+
+			protected function btn_dl_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				trace("TO DO Download if image is good;")
+			}
+
+		]]>
+	</fx:Script>
+	<mx:Form id="myForm" width="100%" height="100%">
+		<s:HGroup width="100%" height="100%">
+			
+			<s:VGroup width="50%" gap="15" horizontalAlign="center">
+				
+				<mx:FormItem>
+					<s:HGroup>
+						<s:Label id="lb_date_added" text="{selectedImage.date_added}"/>
+					</s:HGroup>
+				</mx:FormItem>
+				
+				<s:VGroup>
+					<s:Label text="Title"/>
+					<s:TextArea id="ti_title" text="{selectedImage.title}" maxChars="255" width="245" height="48">
+					</s:TextArea>
+				</s:VGroup>
+				<mx:Image width="150" height="150" horizontalAlign="center" verticalAlign="middle" maxHeight="150" maxWidth="150" source="{selectedImage.image_th_url}"/>
+			</s:VGroup>
+			<s:VGroup width="50%">
+				<s:Label text="Content"/>
+				<s:TextArea width="100%" height="100%" id="ta_content" text="{selectedImage.content}">
+				</s:TextArea>
+				<s:Label text="Tags"/>
+				<s:TextArea width="100%" height="71" id="ta_tags" text="{selectedImage.image_tags}" maxChars="2000">
+				</s:TextArea>
+				<s:HGroup width="100%" horizontalAlign="right">
+					<mx:Image buttonMode="true" source="{IconLib.MICROPHONE_32}"  width="32" height="32" id="btn_record_audio" toolTip="Record Audio" click="btn_record_audio_clickHandler(event)"/>
+				</s:HGroup>
+			</s:VGroup>
+			
+		</s:HGroup>
+		<s:HGroup width="100%">
+			<s:VGroup width="100%">
+				<s:Label text="Copyright Info"/>
+				<s:TextArea width="100%" height="47" id="ta_copyright" text="{selectedImage.image_copyright}" maxChars="100">
+				</s:TextArea>
+			</s:VGroup>	
+		</s:HGroup>
+		<s:HGroup maxWidth="{this.width-20}">
+		<s:Label text="{selectedImage.url}"  width="450"/>
+		</s:HGroup>
+		<s:HGroup width="100%" paddingTop="10">
+		<s:HGroup width="100%" horizontalAlign="left" paddingRight="3"  verticalAlign="middle">
+		<!--<mx:Image buttonMode="true" source="{IconLib.TRASH_32}"  width="32" height="32" toolTip="Remove" id="btn_remove" click="btn_remove_clickHandler(event)"/>
+		-->
+		</s:HGroup>
+		<s:HGroup horizontalAlign="center">
+		<!--<s:ComboBox id="cb_list" enabled="{cb_all.selected}" labelField="title" dataProvider="{listOfImages}"/>
+		<s:CheckBox id="cb_all" label="All" toolTip="Apply to all images in list"/>-->
+		</s:HGroup>
+		<s:HGroup width="100%" horizontalAlign="right" paddingRight="3" gap="10">
+			<mx:Image visible="{!isNaN(selectedImage.ID)}" includeInLayout="{!isNaN(selectedImage.ID)}" buttonMode="true" source="{IconLib.SAVE_32}"  width="32" height="32" toolTip="Save" id="btn_save" click="btn_save_clickHandler(event)"/>
+			
+			<mx:Image buttonMode="true" source="{IconLib.SHOW_IMAGE}" width="32" height="32" click="{openInBrowser(selectedImage.url)}" toolTip="Open in browser"/>
+			<mx:Image visible="{isNaN(selectedImage.ID)}" includeInLayout="{isNaN(selectedImage.ID)}" buttonMode="true" source="{IconLib.SAVE_IMAGE_TO_WORDSMART}"  width="32" height="32" toolTip="Save Image to WordSmart" id="btn_dl" click="btn_dl_clickHandler(event)"/>
+		</s:HGroup>
+		</s:HGroup>
+		
+			
+	</mx:Form>
+	
+</titlewindows:CollapsibleTitleWindow>

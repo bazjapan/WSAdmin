@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SparkSkin xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			 xmlns:s="library://ns.adobe.com/flex/spark" 
+			 xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Metadata>
+		[HostComponent("views.buttons.IconButton")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.StateChangeEvent;
+			private function onCurrentStateChaging(event:StateChangeEvent):void
+			{
+				switch(event.newState)
+				{
+					case "up":
+						setIcon("iconUp");
+						break;
+					case "over":
+						setIcon("iconOver");
+						break;
+					case "down":
+						setIcon("iconDown");
+						break;
+					case "disabled":
+						setIcon("iconDisabled");
+						break;
+				}
+			}
+			
+			private function setIcon(type:String):void
+			{
+				if(hostComponent.getStyle(type) != null)
+				{
+					icon.source = hostComponent.getStyle(type);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<s:states>
+		<s:State name="up"/>
+		<s:State name="down"/>
+		<s:State name="over"/>
+		<s:State name="disabled"/>
+	</s:states>
+	
+	<s:Rect
+		bottom="0" left="0" right="0" top="0"
+		alpha="0.5"
+		alpha.over="0.8"
+		radiusX="2" radiusY="2">
+		<s:stroke>
+			<s:SolidColorStroke id="outline" weight="1"/>
+		</s:stroke>
+		<s:fill>
+			<s:LinearGradient rotation="90">
+				<s:GradientEntry color="{hostComponent.getStyle('gColorTop')}" ratio="0"/>
+				<s:GradientEntry color="{hostComponent.getStyle('gColorBottom')}" ratio="1"/>
+			</s:LinearGradient>
+		</s:fill>
+	</s:Rect>
+	
+	<s:Group
+		horizontalCenter="0"
+		verticalCenter="0">
+		<s:layout>
+			<s:HorizontalLayout
+				paddingBottom="{hostComponent.getStyle('paddingBottom')}" 
+				paddingLeft="{hostComponent.getStyle('paddingLeft')}" 
+				paddingRight="{hostComponent.getStyle('paddingRight')}" 
+				paddingTop="{hostComponent.getStyle('paddingTop')}"
+				gap="4" verticalAlign="bottom"/>
+		</s:layout>
+		<mx:Image id="icon"
+				  source="{hostComponent.getStyle('iconUp')}"
+				  verticalCenter="0"
+				 
+				  source.over="{(hostComponent.getStyle('iconOver')!=null)?hostComponent.getStyle('iconOver'):hostComponent.getStyle('iconUp')}"
+				  source.down="{(hostComponent.getStyle('iconDown')!=null)?hostComponent.getStyle('iconDown'):hostComponent.getStyle('iconUp')}"
+				  source.disabled="{(hostComponent.getStyle('iconDisabled')!=null)?hostComponent.getStyle('iconDisabled'):hostComponent.getStyle('iconUp')}"/>
+		<s:Label text="{hostComponent.label}"
+				 verticalCenter="0"
+				 includeInLayout="{(hostComponent.label != '')}"
+				 visible="{(hostComponent.label != '')}"/>
+	</s:Group>
+</s:SparkSkin>

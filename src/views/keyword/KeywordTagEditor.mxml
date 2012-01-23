@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" creationComplete="cc()" height="100%" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout paddingLeft="3" paddingRight="3"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.utils.keyword.tagStringToCollection;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import spark.components.TextInput;
+			
+			import utils.array.contains;
+			
+			private var _keyword:WSKeyword;
+			[Bindable]
+			private var tagTI:TextInput;
+			
+			public function get keyword():WSKeyword
+			{
+				return _keyword;
+			}
+			
+			public function set keyword(value:WSKeyword):void
+			{
+				_keyword = value;
+				if(value != null)
+				{
+					keyword_tags = tagStringToCollection(value.keyword_tags);
+				}
+			}
+			
+			//--------------------------------------
+			[Bindable]
+			private var available_tags:ArrayCollection = new ArrayCollection(["noun","adjective","verb","color","animal"]);
+			[Bindable]
+			public var keyword_tags:ArrayCollection = new ArrayCollection;
+			
+			private function cc():void
+			{
+				tagTI = ddlt_available_tags.textInput;
+			}
+			
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				keyword_tags.removeItemAt(lt_tags.selectedIndex);
+				keyword.keyword_tags = keyword_tags.source.join("|");
+			}
+			
+			protected function btn_add_clickHandler(event:MouseEvent = null):void
+			{
+				if(!ddlt_available_tags.selectedItem)return;
+				var exists:Boolean
+				var toAdd:String = ddlt_available_tags.selectedItem as String;
+				for each (var str:String in keyword_tags)
+				{
+					if(toAdd == str)
+					{
+						exists = true;
+						break;
+					}
+				}
+				if(!exists)
+				{
+					keyword_tags.addItem(toAdd);
+					keyword.keyword_tags = keyword_tags.source.join("|");
+					
+				}
+				if(utils.array.contains(available_tags.source,toAdd) == 0)
+				{
+					available_tags.addItem(toAdd);
+					trace("update remote list");
+				}
+				ddlt_available_tags.selectedItem = null;
+				ddlt_available_tags.textInput.text = "";
+			}
+			
+			
+			protected function ddlt_available_tags_creationCompleteHandler(event:FlexEvent):void
+			{
+				ddlt_available_tags.textInput.addEventListener(KeyboardEvent.KEY_DOWN,onKeyDown);
+			}
+			
+			private function onKeyDown(event:KeyboardEvent):void
+			{
+				if(event.charCode == 13)
+				{
+					btn_add_clickHandler();
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:ComboBox width="100%" creationComplete="ddlt_available_tags_creationCompleteHandler(event)" id="ddlt_available_tags" dataProvider="{available_tags}"/>
+	
+	<s:HGroup width="100%">
+		<s:HGroup width="100%" horizontalAlign="left">
+		<buttons:WSIconButton width="100" icon="{IconLib.ADD_16}" label="Add" id="btn_add" click="btn_add_clickHandler(event)" visible="{tagTI.text.length &gt; 0}"/>
+		</s:HGroup>
+			
+		<s:HGroup width="100%" horizontalAlign="right">
+			<buttons:WSIconButton width="100" icon="{IconLib.DELETE_16}" label="Remove" id="btn_remove" click="btn_remove_clickHandler(event)" visible="{lt_tags.selectedItem}"/>
+		</s:HGroup>
+	</s:HGroup>	
+		
+	<s:List id="lt_tags" dataProvider="{keyword_tags}" width="100%" height="100%"></s:List>
+
+</s:Group>

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300" creationComplete="cc()">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.pbsmediatech.json.utils.JSONResultHelper2;
+			import com.pbsmediatech.json.utils.extractResult;
+			
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.AudioEvent;
+			import jp.wordsmart.json.controllers.WSAudioController;
+			import jp.wordsmart.json.utils.WSAudioResultHelper;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.ItemsDroppedOnList;
+			import jp.wordsmart.utils.app.getServiceBaseURL;
+			import jp.wordsmart.utils.audio.playAudioFromURL;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.Application;
+			import mx.core.FlexGlobals;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.Application;
+			
+			[Bindable]
+			public var matchingAudio:ArrayCollection = new ArrayCollection;
+			
+			public var language_code:String;
+			public var transcript:String;
+			public var removeFunc:Function;
+			public var editFunc:Function;
+			
+			
+			private var audioController:WSAudioController = new WSAudioController(getServiceBaseURL());
+			private function cc():void
+			{
+			addEventListener("EDIT_AUDIO_EVENT", onEDIT_AUDIO_EVENT);
+			addEventListener("REMOVE_AUDIO_EVENT", onREMOVE_AUDIO_EVENT);
+			systemManager.addEventListener(AudioEvent.AUDIO_REGISTERED_EVENT,onAUDIO_REGISTERED_EVENT);
+			}
+
+			private function onAUDIO_REGISTERED_EVENT(event:AudioEvent):void
+			{
+				trace("I'm getting that registering vibe thang my lingo is "+language_code);
+				var registered_audio:WSAudio = event.audioVO;
+				if(registered_audio.audio_language == language_code
+					&& registered_audio.audio_transcript == transcript)
+				{
+					matchingAudio.addItem(registered_audio);
+				}
+				
+			}
+
+			public function getMatchingAudio():void
+			{	
+				
+				
+				
+				audioController.search_wsaudio_transcript_strict({search_term:transcript, audio_language:language_code}, function(evt:ResultEvent):void
+				{
+					var result_helper:WSAudioResultHelper = new WSAudioResultHelper;
+					if(result_helper.resultIsGood(extractResult(evt)))
+						{
+					var res:Array = result_helper.resultToArray(extractResult(evt));
+					var audios:Array = [];
+					for each (var obj:Object in res)
+					{
+						var audio:WSAudio = new WSAudio(obj);
+						audios.push(audio);
+					}
+					matchingAudio.source = audios;
+						}
+				});
+			}
+
+			private function onREMOVE_AUDIO_EVENT(event:Event):void
+			{
+				var alr:AudioListRenderer = event.target as AudioListRenderer;
+				//removeFunc(alr.theAudio);
+			}
+
+			private function onEDIT_AUDIO_EVENT(event:Event):void
+			{
+				var alr:AudioListRenderer = event.target as AudioListRenderer;
+				//editFunc(alr.theAudio);
+			}
+			
+			public function removeAudio(audio:WSAudio):void
+			{
+				audioController = new WSAudioController(DomainSettings.API_URL);
+				audioController.remove_ws_audios_by_audio_ID(audio, function(evt:ResultEvent):void
+				{
+					matchingAudio.removeItemAt(matchingAudio.getItemIndex(audio));
+				});
+			}
+			public function editAudio(audio:WSAudio):void
+			{
+				//ADD WAY TO EDIT AUDIO HERE
+				/* var pop:AudioDetails = new AudioDetails;
+				pop.audioObj = audio;
+				PopUpManager.addPopUp(pop, this);
+				pop.saveFunc = function(audio:WsAudio):void
+				{
+				audioController = new AudioController(MainModel.getInstance().useLocalControllers);
+				audioController.update_audio(audio, function(evt:ResultEvent):void
+				{
+				trace("Update ok "+evt.result as String)
+				});
+				
+				} */
+			}
+			
+		
+
+			
+		]]>
+	</fx:Script>
+	<s:List id="lt_audio" width="100%" height="100%" labelField="origin" dataProvider="{matchingAudio}" itemRenderer="views.audio.AudioListRenderer">
+		
+	</s:List>
+</s:Group>

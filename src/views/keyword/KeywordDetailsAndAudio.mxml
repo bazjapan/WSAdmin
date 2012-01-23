@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="cc(event)" xmlns:ui="ui.*" xmlns:views="views.*" xmlns:audio="views.audio.*" xmlns:ns="library://ns.tink.ws/flex/spark" xmlns:audio1="views.request.audio.*" xmlns:translation="views.request.translation.*" xmlns:keyword="views.keyword.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.getDefaultAudio;
+			import jp.wordsmart.audio.providers.AudioProvider;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.AudioEvent;
+
+
+			import jp.wordsmart.json.controllers.AudioRequestController;
+			import jp.wordsmart.json.controllers.TranslationRequestController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.ProgressBarHelper;
+			import jp.wordsmart.utils.audio.registerAudioProviderAudioToWordSmart;
+			import jp.wordsmart.utils.googleTextToSpeech;
+			import jp.wordsmart.utils.jsonhelpers.AudioRequestResultHelper;
+			import jp.wordsmart.utils.jsonhelpers.TranslationRequestResultHelper;
+			import jp.wordsmart.utils.keyword.equivalentStringToCollection;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.Application;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.IndexChangedEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			import utils.array.containsObjectWithSameParameterValue;
+			import utils.translate.translateWithGoogle;
+			
+			import views.audio.AudioFromWebURL;
+			
+			
+			
+			
+			public var baseLanguageTextArea:TextArea;//this is set to the english (maybe base lang - check)text
+			[Bindable]
+			public var baseLanguageCode:String;
+			
+			[Bindable]
+			public var keyword_text:String;
+			[Bindable]
+			public var keyword_language:String;
+			
+			[Bindable]
+			public var keyword_languageText:String = languageCodeToText(keyword_language);
+			
+			[Bindable]
+			public var keyword_equivalents:ArrayCollection;
+			[Bindable]
+			public var keyword_type:String = "Panel says type is";
+			[Bindable]
+			public var keyword_status:String = "Panel says status is";
+			
+			[Bindable]
+			public var keyword_ID:Number;
+			
+			public var showEquivalents:Function;
+			
+			private var progressBarHelper:ProgressBarHelper;
+			protected function cc(event:FlexEvent):void
+			{
+				progressBarHelper = new ProgressBarHelper(progress);
+				keyword_languageText = languageCodeToText(keyword_language);
+				if(keyword_language == baseLanguageCode)
+				{
+					vs_navi.removeChild(cc_requests);
+				}
+			}
+
+		
+			
+		
+			
+			/**
+			 * 
+			 * @param providerName
+			 * @param audioObjs
+			 * @return Whether this provider has an audio objetc in the list;
+			 * 
+			 */
+			
+			
+
+
+			protected function ta_keyword_text_changeHandler(event:TextOperationEvent):void
+			{
+				keyword_text = ta_keyword_text.text;
+			}
+			
+			
+			protected function dd_keyword_type_changeHandler(event:spark.events.IndexChangeEvent):void
+			{
+				keyword_type = dd_keyword_type.getKeywordType();
+			}
+	
+
+
+			
+
+
+			protected function btn_translate_clickHandler(event:MouseEvent):void
+			{
+				trace(baseLanguageTextArea.text)
+				translateWithGoogle(baseLanguageTextArea.text, baseLanguageCode, keyword_language,function(evt:ResultEvent):void
+				{
+					var rawData:String = String(evt.result);
+					try
+					{
+					if(JSON.decode(rawData).responseData.translatedText !=null){
+						var decoded:String =JSON.decode(rawData).responseData.translatedText;
+						keyword_text = decoded;
+					}
+					}
+					catch(err:Error)
+					{
+						Alert.show("Can not translate");
+					}
+					
+					
+					
+					
+				});
+			}
+
+			
+			
+			
+			//equivalent stuff
+			private function onEquivalentTIKeyDown(event:KeyboardEvent):void
+			{
+				if(event.charCode == 13)
+				{
+					btn_add_equivalent_clickHandler();
+				}
+			}
+			protected function btn_add_equivalent_clickHandler(event:MouseEvent = null):void
+			{
+				if(ti_equivalentText.text == '')return;
+				var exists:Boolean
+				var toAdd:String = ti_equivalentText.text;
+				for each (var str:String in keyword_equivalents)
+				{
+					if(toAdd == str)
+					{
+						exists = true;
+						break;
+					}
+				}
+				if(!exists)
+				{
+					keyword_equivalents.addItem(toAdd);
+					//btn_add_equivalents_clickHandler();
+					
+				}
+				ti_equivalentText.text = "";
+			}
+			protected function btn_remove_equivalents_clickHandler(event:MouseEvent):void
+			{
+				keyword_equivalents.removeItemAt(lt_equivs.selectedIndex);
+			}
+			
+		
+		]]>
+	</fx:Script>
+	
+	<mx:HDividedBox width="100%" height="100%">
+		
+		<!--TEXT-->
+			<s:VGroup width="100%" height="100%" paddingLeft="3">
+				<s:HGroup width="100%" height="24" gap="10">
+					<mx:TabBar dataProvider="{vs_navi}"/>
+				
+					<!--TEXT CONTROLS-->
+					<s:HGroup paddingRight="5" verticalAlign="middle" paddingTop="3">
+						
+						<!--TRANSLATION CONTROLS-->
+						
+						<s:Button label="{'Translate from '+languageCodeToText(baseLanguageCode)}" id="btn_translate" click="btn_translate_clickHandler(event)" includeInLayout="{keyword_language != baseLanguageCode &amp;&amp; vs_navi.selectedIndex == 0}" visible="{keyword_language != baseLanguageCode  &amp;&amp; vs_navi.selectedIndex == 0}"/>
+						<!--//TRANSLATION CONTROLS-->
+						<!--KEYWORD CONTROLS-->
+						<keyword:KeywordTypeDropDown keyword_type="{keyword_type}" id="dd_keyword_type" change="dd_keyword_type_changeHandler(event)" includeInLayout="{keyword_language == baseLanguageCode &amp;&amp; vs_navi.selectedIndex == 0}" visible="{keyword_language == baseLanguageCode  &amp;&amp; vs_navi.selectedIndex == 0}"/>
+						<!--//KEYWORD CONTROLS-->
+						<!--REQUEST TRANSLATION CONTROLS-->
+						<mx:Image  includeInLayout="{this.keyword_language != this.baseLanguageCode  &amp;&amp; vs_navi.selectedChild.label == cc_requests.label}" visible="{this.keyword_language != this.baseLanguageCode  &amp;&amp; vs_navi.selectedChild.label == cc_requests.label}" buttonMode="true" width="16" height="16" source="{IconLib.ADD_16}"  toolTip="Request Translation" id="btn_request_translation" click="cc_translationRequestList.add_request(baseLanguageTextArea.text)"/>
+						<mx:Image  includeInLayout="{this.keyword_language != this.baseLanguageCode  &amp;&amp; vs_navi.selectedChild.label == cc_requests.label}" visible="{this.keyword_language != this.baseLanguageCode  &amp;&amp; vs_navi.selectedChild.label == cc_requests.label}" buttonMode="true" width="16" height="16" source="{IconLib.RELOAD}"  toolTip="Get Pending Requests" id="btn_reload_translation_requests" click="cc_translationRequestList.refresh_requests()"/>
+						<!--//REQUEST TRANSLATION CONTROLS-->
+						<views:ProgressBar id="progress" width="100%" mode="manual" labelPlacement="center" enabled="false" includeInLayout="false" visible="false"/>
+					</s:HGroup>
+					<!--//TEXT CONTROLS-->
+					
+				</s:HGroup>
+				
+				<mx:ViewStack creationPolicy="all" id="vs_navi" width="100%" height="100%">
+					
+					<!--TEXT-->
+					<s:NavigatorContent icon="{IconLib.TEXT_16}" label="Text" width="100%" height="100%" toolTip="{'Text for '+keyword_languageText}">
+						<s:VGroup width="100%" height="100%">
+							<s:TextArea id="ta_keyword_text" change="ta_keyword_text_changeHandler(event)" text="{keyword_text}" width="100%" height="100%">
+							</s:TextArea>
+						</s:VGroup>
+					</s:NavigatorContent>
+					<!--//TEXT-->
+					
+					<!--TEXT EQUIVALENTS-->
+					<s:NavigatorContent icon="{IconLib.EQUIVALENTS_16}" label="Equivalents" toolTip="{'Equivalent Text for '+keyword_languageText}" width="100%" height="100%">
+						<s:HGroup width="100%" height="100%">
+							<mx:VBox width="100%" height="100%">
+								<s:HGroup width="100%" verticalAlign="middle">
+									<s:TextInput width="100%" creationComplete="{ti_equivalentText.addEventListener(KeyboardEvent.KEY_DOWN,onEquivalentTIKeyDown);}" id="ti_equivalentText" />
+									<mx:Image buttonMode="true" source="{IconLib.ADD_16}" width="16" height="16" toolTip="{'Add Equivalent Text for '+keyword_languageText}" id="btn_add" click="btn_add_equivalent_clickHandler(event)" enabled="{ti_equivalentText.text != ''}"/>
+									<mx:Image buttonMode="true" source="{IconLib.DELETE_16}" width="16" height="16" toolTip="{'Remove Equivalent text from '+keyword_languageText}" id="btn_remove" click="btn_remove_equivalents_clickHandler(event)" enabled="{lt_equivs.selectedItem}"/>
+								</s:HGroup>	
+							<s:List id="lt_equivs" dataProvider="{keyword_equivalents}" width="100%" height="100%"></s:List>
+							</mx:VBox>
+						</s:HGroup>
+					</s:NavigatorContent>
+					<!--//TEXT EQUIVALENTS-->
+					
+					<!--TRANSLATION REQUESTS-->
+					<s:NavigatorContent id="cc_requests"  icon="{IconLib.HAND_16}" label="Requests" toolTip="Translation Requests" width="100%" height="100%">
+						<s:VGroup width="100%" height="100%">
+							<translation:TranslationRequestList id="cc_translationRequestList" width="100%" height="100%" keyword_ID="{keyword_ID}" source_language="{baseLanguageCode}" translation_language="{keyword_language}" />
+						</s:VGroup>
+					</s:NavigatorContent>
+					<!--//TRANSLATION REQUESTS-->
+					
+				</mx:ViewStack>
+				
+			</s:VGroup>
+		<!--//TEXT-->
+		
+		<!--AUDIO-->
+		
+		<keyword:KeywordAudio width="100%" height="100%" transcript="{ta_keyword_text.text}" language_code="{keyword_language}">
+			
+		</keyword:KeywordAudio>
+
+		
+		
+		
+		</mx:HDividedBox>
+
+	
+	
+	
+</s:Group>

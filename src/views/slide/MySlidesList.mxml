@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" implements="views.slide.ISlideAdderModule" width="100%" height="100%" xmlns:slide="views.slide.*" xmlns:buttons="views.buttons.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:VerticalLayout />
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.json.controllers.WSImageController;
+			import jp.wordsmart.model.SlideAdderModel;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable]public var wordSmartImage:WSImage;
+			[Bindable]public var searchedSlides:ArrayCollection = new ArrayCollection;
+			[Bindable]public var start_index:uint = 0;
+			public var total_num_results:uint = 8;
+			
+			public function updateImage():void
+			{
+				
+			}
+			
+
+			protected function slide_list_changeHandler(event:IndexChangeEvent):void
+			{
+				trace("list changed "+lt_slides.selectedItem)
+				wordSmartImage = List(event.target).selectedItem as WSImage;
+				
+			}
+			
+
+			
+			
+			private var controller:WSImageController = new WSImageController(DomainSettings.API_URL)
+			private function getImages(callback:Function):void
+			{
+				trace("WARNING getImages is No longer in operation")
+				/* controller.get_my_images(ti_search_term.text,start_index,total_num_results,function(evt:ResultEvent):void
+				{
+					var resultAsArray:Array = new ImageResultHelper().resultToArray(evt.result.toString());
+					searchedSlides.source = resultAsArray;
+					callback(resultAsArray.length);
+					wordSmartImage = null;
+					
+				}); */
+			}
+
+
+			protected function getPrevSearch():void
+			{
+				start_index = start_index-total_num_results;
+				getImages(
+					function(numReturned:int):void
+					{
+						updateSearchUI();
+					});
+			}
+
+
+			protected function getNextSearch():void
+			{
+				start_index = start_index+searchedSlides.length;
+				getImages(function(numReturned:int):void{
+					updateSearchUI();
+				});
+			}
+
+
+			protected function btn_mySlides_clickHandler(event:MouseEvent):void
+			{
+				currentState = "search";
+				wordSmartImage = lt_searched_slides.selectedItem as WSImage;
+			}
+
+
+			protected function btn_recentAddedSlides_clickHandler(event:MouseEvent):void
+			{
+				currentState = "recent";
+				wordSmartImage = lt_slides.selectedItem as WSImage;
+			}
+
+
+
+
+			
+
+			protected function btn_search_clickHandler():void
+			{
+				start_index = 0;
+				searchedSlides.removeAll();
+				updateSearchUI();
+				getNextSearch();
+				
+			}
+			private function updateSearchUI():void
+			{
+				btn_searchNext.visible = searchedSlides.length==total_num_results;
+				btn_searchPrev.visible = start_index>0;
+			}
+			
+
+
+
+		]]>
+	</fx:Script>
+	
+	
+	<s:states>
+		<s:State name="recent"/>
+		<s:State name="search"/>
+	</s:states>
+	<s:HGroup width="100%" paddingLeft="2" paddingRight="2">
+    		<s:HGroup horizontalAlign="left">
+				<slide:SlideAdderNavigatorBar
+						id="navi" 
+						showCreateButton="true">
+				</slide:SlideAdderNavigatorBar>
+			</s:HGroup>	
+    		<s:HGroup width="100%" horizontalAlign="left">
+				<buttons:WSIconButton id="btn_recentAddedSlides" visible="{currentState != 'recent'}" includeInLayout="{currentState != 'recent'}" width="24" height="24" icon="{IconLib.RECENT_16}" toolTip="Recently Added" click="btn_recentAddedSlides_clickHandler(event)"/>
+				<buttons:WSIconButton id="btn_mySlides" visible="{currentState != 'search'}"  includeInLayout="{currentState != 'search'}" width="24" height="24" icon="{IconLib.ZOOM_16}" toolTip="My Slides" click="btn_mySlides_clickHandler(event)"/>
+				<mx:VRule height="24"/>
+				<s:HGroup width="100%" includeIn="search">
+					
+					<s:TextInput id="ti_search_term" width="100%"/>
+					<buttons:WSIconButton id="btn_search" width="24" height="24" icon="{IconLib.ZOOM_16}" toolTip="Search" click="btn_search_clickHandler()"/>
+					<buttons:WSIconButton id="btn_searchPrev" visible="false"   width="24" height="24" icon="{IconLib.ARROW_LEFT_16}" toolTip="Prev" click="getPrevSearch()"/>
+					<buttons:WSIconButton id="btn_searchNext" visible="false"  width="24" height="24" icon="{IconLib.ARROW_RIGHT_16}" toolTip="Next" click="getNextSearch()"/>
+				<mx:VRule height="24"/>
+					</s:HGroup>
+    		</s:HGroup>	
+		<slide:SlideAdderButtons 
+			wordSmartImage="{wordSmartImage}" 
+			showEditDetails="{wordSmartImage != null}" 
+			showEditSlide="{wordSmartImage != null}" 
+			showShowKeywordDetails="{wordSmartImage != null}" 
+			showAddToKeyword="{wordSmartImage != null}" />
+	</s:HGroup>
+	<s:VGroup includeIn="recent" width="100%" height="100%">
+	<s:List itemRenderer="views.slide.MySlideRenderer" useVirtualLayout="false"  dataProvider="{SlideAdderModel.getInstance().recentlyAddedSlides}" width="100%" height="100%" id="lt_slides"  change="slide_list_changeHandler(event)">
+		<s:layout>
+			<s:TileLayout/>
+		</s:layout>
+	</s:List>
+	</s:VGroup>
+	
+	<s:VGroup includeIn="search" width="100%" height="100%">
+		<s:List itemRenderer="views.slide.MySlideRenderer" useVirtualLayout="false" dataProvider="{searchedSlides}" width="100%" height="100%" id="lt_searched_slides" change="slide_list_changeHandler(event)">
+			<s:layout>
+				<s:TileLayout/>
+			</s:layout>
+		</s:List>
+	</s:VGroup>
+</s:Group>

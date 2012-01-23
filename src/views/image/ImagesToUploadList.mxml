@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<titlewindows:CollapsibleTitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+									 xmlns:s="library://ns.adobe.com/flex/spark" 
+									 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:collapsibleTitleWindow="ui.collapsibleTitleWindow.*" creationComplete="cc(event)" width="400" height="300" close="{PopUpManager.removePopUp(this)}" xmlns:titlewindows="ui.titlewindows.*">
+	<titlewindows:layout>
+		<s:VerticalLayout/>
+	</titlewindows:layout>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.net.MimeTypeMap;
+			
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.json.controllers.ImageController;
+			import jp.wordsmart.model.AppModel;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import s3.flash.SaveTheFuckinThingToAmazon;
+			
+			import ui.titlewindows.AWindowSkin;
+			
+			import utils.timestamp.dateToTimeStampUTC;
+			[Bindable]
+			public var files:ArrayCollection = new ArrayCollection;
+			private var mimeMap:MimeTypeMap = new MimeTypeMap();
+			private var now:Date = new Date();
+			
+			protected function cc(event:FlexEvent):void
+			{
+				this.setStyle("skinClass", AWindowSkin);
+			}
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				if(dg_files.selectedItem)
+				{
+					files.removeItemAt(dg_files.selectedIndex);
+				}
+			}
+			private var uploadTimer:Timer;
+			private var currentCount:int;
+			private var uploading:Array;//isolates uploading files so we get no out of index errors
+			protected function btn_upload_clickHandler(event:MouseEvent):void
+			{
+				
+				//creatthumbs !!
+				uploading = [];
+				for each (var obj:File in files)
+				{
+					uploading.push(obj);
+				}
+				
+				currentCount = 0;
+				var totalRepeats:int = files.length;
+				uploadTimer = new Timer(1000, totalRepeats);
+				uploadTimer.addEventListener(TimerEvent.TIMER, slowMeDown);
+				uploadTimer.reset();
+				uploadTimer.start();
+			}
+			private function slowMeDown(evt:TimerEvent):void
+			{
+				currentCount = Timer(evt.currentTarget).currentCount;
+				lb_status.text = "Processing Image "+currentCount;
+				saveImageToS3(uploading[currentCount-1] as File);
+			}
+			
+			//saves image to amazon
+			public var imageAddedHandlerFunction:Function;
+			private var imageController:ImageController = new ImageController(AppModel.getInstance().useLocalControllers);
+			private function saveImageToS3(file:File):void
+			{
+				var fl:File = file;
+				var fileRef:FileReference= new FileReference();
+				fileRef = fl as FileReference;
+				var imageName:String = fl.name.split(".")[0].toString()+"_"+now.getTime().toString()+"."+fl.extension;
+				var s3Meta:Object = prepareImageMetaObject("");
+				var saveMeForChristsSake:SaveTheFuckinThingToAmazon = new SaveTheFuckinThingToAmazon();
+				saveMeForChristsSake.doItNow(imageName, WordSmartConstants.IMAGE_BUCKET,s3Meta,fileRef, 
+					function(event:ProgressEvent):void
+					{
+						var percent:int = Math.floor(event.bytesLoaded/event.bytesTotal * 100);
+						enableProgress("Uploading", percent);
+						if(percent == 100)
+						{
+							disableProgress();
+						}
+					},
+					function(de:DataEvent):void
+					{
+						
+						trace("update complete remove from dg and add to wordsmart as new then send event and add to list it was dropped from")
+						trace(de.data)
+						var xml:XML = new XML(de.data);
+						
+						var image:WSImage = new WSImage();
+						image.date_added = dateToTimeStampUTC(now);
+						image.title = file.name;
+						image.url = xml.Location;
+						image.thumbnail_url = image.url;
+						image.size = file.size.toString();
+						image.filename = file.name;
+						image.isLocal = 1;
+						image.mimetype = mimeMap.getMimeType(file.extension);
+						image.copyright = WordSmartConstants.IMAGE_COPYRIGHT_TEXT;
+						image.image_tags = ta_image_tags.text;
+						image.orig_url = image.url;
+						imageController.add_image(image, function(evt:ResultEvent):void
+						{
+							image.ID = Number(evt.result);
+							imageAddedHandlerFunction(image);
+						});
+						
+						files.removeItemAt(files.getItemIndex(file));
+						if(files.length == 0)
+						{
+							removeMySelf()
+						}
+						
+						
+					},function(evt:IOErrorEvent):void
+					{
+						Alert.show("Unable to upload file "+file.name);
+					},null);
+				
+			}
+			
+			private function prepareImageMetaObject(srcString:String):Object
+			{
+				var contributer:jp.wordsmart.dto.Contributer = new Contributer();
+				contributer.ID = "testContributor";
+				var meta:Object = new Object;
+				meta.addedBy = contributer.ID;
+				meta.origURL = srcString;
+				
+				return meta;
+			}
+			
+			//---------------progress bar
+			private function enableProgress(action:String, perc:int):void
+			{
+				progress.visible = true;
+				progress.includeInLayout = true;
+				progress.label = action +" "+ perc.toString()+"%";
+				progress.enabled = true;
+				progress.setProgress(perc,100);
+			}
+			private function disableProgress():void
+			{
+				progress.visible = false;
+				progress.includeInLayout = false;
+				progress.label = "Done";
+				progress.enabled = false;
+			}
+			
+			private function removeMySelf():void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<mx:DataGrid id="dg_files" width="100%" height="100%" dataProvider="{files}">
+		<mx:columns>
+			<mx:DataGridColumn dataField="name"/>
+			<mx:DataGridColumn dataField="type"/>
+			<mx:DataGridColumn dataField="size"/>
+		</mx:columns>
+	</mx:DataGrid>
+	
+	<s:VGroup paddingLeft="2" paddingRight="2" width="100%">
+	<s:Label text="Tags"/>
+	<s:TextArea id="ta_image_tags"  width="100%" height="50"/>
+	<s:HGroup width="100%" paddingRight="3" paddingLeft="3" paddingBottom="1" paddingTop="1" verticalAlign="middle">
+		<s:HGroup width="100%" horizontalAlign="left">
+			<mx:Image buttonMode="true" width="16" height="16" source="{IconLib.DELETE_16}" toolTip="Remove" visible="{dg_files.selectedItem}" id="btn_remove" click="btn_remove_clickHandler(event)"/>
+		</s:HGroup>
+		<s:HGroup>
+			<s:Label id="lb_status"/>
+		</s:HGroup>
+		<s:HGroup width="100%" horizontalAlign="right">
+			<mx:Image buttonMode="true" width="32" height="32" source="{IconLib.UPLOAD_32}" id="btn_upload" toolTip="Upload" visible="{files.length>0}" click="btn_upload_clickHandler(event)"/>
+		</s:HGroup>
+	</s:HGroup>	
+	</s:VGroup>
+	
+	<mx:ProgressBar id="progress"  width="100%" mode="manual" labelPlacement="center" enabled="false" includeInLayout="false" visible="false">
+		
+	</mx:ProgressBar>
+	
+	
+</titlewindows:CollapsibleTitleWindow>

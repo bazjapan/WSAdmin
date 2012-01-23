@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<titlewindows:CollapsibleTitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" title="Add new or load existing keyword" 
+							   xmlns:s="library://ns.adobe.com/flex/spark" 
+							   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" xmlns:titlewindows="ui.titlewindows.*"  close="{PopUpManager.removePopUp(this);}">
+	<titlewindows:layout>
+		<s:VerticalLayout/>
+	</titlewindows:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.events.KeywordEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			
+			import ui.titlewindows.AWindowSkin;
+			import ui.titlewindows.SuperTitleWindowSkin;
+			
+			[Bindable]
+			private var toAdd:ArrayCollection = new ArrayCollection;;
+			[Bindable]
+			private var toLoad:ArrayCollection = new ArrayCollection;
+			
+			private function cc():void
+			{
+			this.setStyle("skinClass", AWindowSkin);
+			this.addEventListener(KeywordEvent.ADD_TO_LIST,onADD_TO_LIST);
+			}
+
+			private function onADD_TO_LIST(event:KeywordEvent):void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+			public function set keywordToAdd(kw:WSKeyword):void
+			{
+				toAdd.addItem(kw);
+			}
+			public function set keywords(kws:Array):void
+			{
+				toLoad.source = kws;
+				
+			}
+
+			protected function btn_cancel_clickHandler(event:MouseEvent):void
+			{
+				PopUpManager.removePopUp(this);
+			}
+
+		]]>
+	</fx:Script>
+	
+	
+	<s:VGroup height="100%" width="100%">
+		<s:HGroup width="100%" verticalAlign="middle" textAlign="center" paddingRight="5" paddingLeft="5">
+			
+			
+		<s:Label text="Keyword to Add" paddingLeft="5" paddingTop="5" paddingBottom="3" fontSize="13" fontWeight="bold"/>
+		<mx:HRule width="100%"/>
+		
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%">
+			<!-- A DataGroup can hold primitive data items if an item renderer is defined. -->
+			<s:DataGroup  dataProvider="{toAdd}" itemRenderer="views.keyword.KeywordToAddRenderer">
+				<s:layout>
+					<s:VerticalLayout gap="1" />
+				</s:layout>
+			</s:DataGroup>
+		</s:HGroup>
+		<s:HGroup paddingTop="15" width="100%" verticalAlign="middle" textAlign="center" paddingLeft="5" paddingRight="5">
+			
+		
+		<s:Label text="Existing Keywords" paddingLeft="5" paddingTop="3" paddingBottom="3" fontSize="13" fontWeight="bold"/>
+		<mx:HRule width="100%"/>
+			
+		</s:HGroup >
+			<s:HGroup paddingBottom="5" width="100%" height="100%">
+			<!-- A DataGroup can hold primitive data items if an item renderer is defined. -->
+			<s:DataGroup width="100%" height="100%" dataProvider="{toLoad}" itemRenderer="views.keyword.ExistingKeywordRenderer">
+				<s:layout>
+					<s:VerticalLayout gap="1" />
+				</s:layout>
+				
+			</s:DataGroup>
+		</s:HGroup>
+		<!--<s:HGroup paddingBottom="3" paddingTop="10">
+			<s:HGroup horizontalAlign="left"> 
+				<s:Button id="btn_cancel" label="Cancel" click="btn_cancel_clickHandler(event)"/>
+			</s:HGroup>
+			<s:HGroup horizontalAlign="right" width="100%" >
+				
+			</s:HGroup>
+		</s:HGroup>-->
+	</s:VGroup>
+	
+</titlewindows:CollapsibleTitleWindow>

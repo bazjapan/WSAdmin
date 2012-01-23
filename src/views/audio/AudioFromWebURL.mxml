@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+									 xmlns:s="library://ns.adobe.com/flex/spark" 
+									 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc(event)" width="496" height="464" xmlns:titlewindows="ui.titlewindows.*" xmlns:audio="views.audio.*" xmlns:language="views.language.*">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.net.MimeTypeMap;
+			
+			import de.popforge.audio.output.Audio;
+			
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.audio.providers.AudioProvider;
+			import jp.wordsmart.audio.providers.WebURLProvider;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.dto.WSImage;
+			import jp.wordsmart.factory.AudioFactory;
+			import jp.wordsmart.factory.ImageFactory;
+			import jp.wordsmart.json.controllers.AudioController;
+			import jp.wordsmart.json.controllers.ImageController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.audio.playAudioFromURL;
+			import jp.wordsmart.utils.audio.registerAudioProviderAudioToWordSmart;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import s3.flash.SaveTheFuckinThingToAmazon;
+			
+			import ui.titlewindows.AWindowSkin;
+			
+			import utils.timestamp.dateToTimeStampUTC;
+			
+			import views.other.LangIconItemRenderer;
+			
+			[Bindable]
+			public var audio_transcript:String;
+			[Bindable]
+			public var audio_language:String;
+			
+			private var audio_total_time:Number;
+			
+			public var audioProvider:WebURLProvider;
+			
+			private var mimeMap:MimeTypeMap = new MimeTypeMap();
+			
+			private var mimeType:String = "audio/mpeg";
+			
+			[Bindable]
+			private var urlIsGood:Boolean;
+			private var qualifiedURL:String;
+			
+			protected function cc(event:FlexEvent):void
+			{
+				audioProvider = new WebURLProvider;
+				form.dd_recorder_gender.selectedIndex = 0;
+				form.ti_copyright.text = audioProvider.copyright;
+			/* 	form.audio_language = audio_language;
+				form.audio_transcript = audio_transcript; */
+			}
+			
+			//saves image to amazon
+			public var audioAddedHandlerFunction:Function;
+			private var audioController:AudioController = new AudioController(AppModel.getInstance().useLocalControllers);
+			
+		
+			
+			//---------------progress bar
+			private function enableProgress(action:String, perc:int):void
+			{
+				progress.visible = true;
+				progress.includeInLayout = true;
+				progress.label = action +" "+ perc.toString()+"%";
+				progress.enabled = true;
+				progress.setProgress(perc,100);
+			}
+			private function disableProgress():void
+			{
+				progress.visible = false;
+				progress.includeInLayout = false;
+				progress.label = "Done";
+				progress.enabled = false;
+			}
+			
+			
+			
+			
+			protected function btn_play_clickHandler(event:MouseEvent):void
+			{
+				if(btn_play.source == IconLib.PLAY_32)
+				{
+					lb_status.text = "";
+					audio_total_time = 0;
+					playAudioFromURL(ti_url.text, function(duration:Number):void
+					{
+						audio_total_time = duration;
+						urlIsGood = true;
+						qualifiedURL = ti_url.text;
+						btn_play.source = IconLib.PLAY_32;
+						lb_status.text = "URL is good."
+						
+					},function(ioerror:IOErrorEvent):void
+					{
+						urlIsGood = false;
+						lb_status.text = "Can not play URL.";
+						btn_play.source = IconLib.PLAY_32;
+					});
+					btn_play.source = IconLib.STOP_32;
+				}
+				else
+				{
+					flash.media.SoundMixer.stopAll();
+				}
+			}
+			
+
+			protected function btn_download_clickHandler(event:MouseEvent):void
+			{
+				if(urlIsGood)
+				{
+					/* audioProvider.audio_language = form.dd_languages.getSelectedLangCode();
+					audioProvider.audio_mime_type = mimeType;
+					audioProvider.copyright = form.ti_copyright.text;
+					audioProvider.audio_type = form.dd_audio_type.getAudioType();
+					audioProvider.recorder_age = form.ns_recorder_age.value.toString();;
+					audioProvider.recorder_gender = form.dd_recorder_gender.selectedItem.toString(); */
+					/* enableProgress("Registering", 100);
+					registerAudioProviderAudioToWordSmart(audioProvider,0,qualifiedURL,form.ta_audio_transcript.text,
+						function(audio:jp.wordsmart.dto.Audio):void
+						{
+							disableProgress();
+							urlIsGood = false;
+							lb_status.text = "Audio added";
+							audioAddedHandlerFunction(audio);
+						},audio_total_time); */
+				}
+			}
+
+		]]>
+	</fx:Script>
+
+	
+	<s:VGroup paddingLeft="2" paddingRight="2" width="100%">
+		<mx:Form width="100%">
+			<mx:FormItem width="100%" label="Audio URL">
+				<s:TextInput id="ti_url" width="100%"/>
+			</mx:FormItem>
+		</mx:Form>
+		<audio:AudioDetailsForm id="form" width="100%" height="100%">
+			
+		</audio:AudioDetailsForm>
+		<s:HGroup width="100%" paddingRight="3" paddingLeft="3" paddingBottom="2" paddingTop="1" verticalAlign="middle">
+			
+			<s:HGroup horizontalAlign="center" width="100%">
+				<s:Label id="lb_status"/>
+			</s:HGroup>
+			<s:HGroup width="100%" horizontalAlign="right">
+				<mx:Image buttonMode="true" width="32" height="32" source="{IconLib.PLAY_32}" id="btn_play" toolTip="Play Audio" visible="{ti_url.text.length>0}" click="btn_play_clickHandler(event)" />
+				<mx:Image buttonMode="true" width="32" height="32" source="{IconLib.DOWNLOAD}" id="btn_download" toolTip="Add to Wordsmart" visible="{urlIsGood}" click="btn_download_clickHandler(event)" />
+			</s:HGroup>
+		</s:HGroup>	
+	</s:VGroup>
+	
+	<mx:ProgressBar id="progress"  width="100%" mode="manual" labelPlacement="center" enabled="false" includeInLayout="false" visible="false">
+		
+	</mx:ProgressBar>
+	
+	
+</s:Group>

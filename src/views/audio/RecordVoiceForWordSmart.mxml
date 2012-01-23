@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%" xmlns:language="views.language.*" xmlns:buttons="views.buttons.*" xmlns:audio="views.audio.*" xmlns:views="views.*" >
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+
+			protected function btn_audio_tags_clickHandler(event:MouseEvent):void
+			{
+					showTagger(audio, function():void{
+						trace("Tagger has been closed")
+					});
+			}
+
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.audio.getDefaultAudio;
+			import utils.object.clone;
+			import org.bytearray.micrecorder.encoder.WaveEncoder;
+			import utils.timestamp.dateToTimeStampUTC;
+			import utils.date.now;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.dto.WSAudio;
+			import jp.wordsmart.events.PercentEvent;
+			import jp.wordsmart.utils.ProgressBarHelper;
+			import jp.wordsmart.utils.language.Dialect;
+			import jp.wordsmart.utils.language.getContributerDialectForLanguage;
+			import jp.wordsmart.utils.language.getDialectsForLanguage;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import ui.titlewindows.SuperTitleWindowSkin;
+			
+			
+			
+			public var registerFunc:Function;
+			public var convertToWAV:Function;
+			public var convertToMP3:Function;
+			public var uploadFunc:Function;
+			public var showTagger:Function;
+			public var downloadByteArrayFunc:Function;
+			
+			
+			[Bindable]
+			public var moods:ArrayCollection = new ArrayCollection(WordSmartConstants.audioMoods);
+			[Bindable]
+			public var audio:WSAudio;
+			
+			
+			private function cc():void
+			{
+				if(!audio)
+				{
+					audio = getDefaultAudio();
+				}
+				
+				vr.downloadFunc = downloadByteArrayFunc;
+				setUserDialect(audio.audio_language);
+			}
+			
+			
+			
+		
+			
+			public function enable():void
+			{container.enabled = true;}
+			public function disable():void
+			{container.enabled = false}
+			
+			
+			private function addAudioToRemote():void
+			{
+				convertToWAV(vr.recorder.output, function(wav:ByteArray):void{
+				//var wav:ByteArray = new WaveEncoder().encode(vr.recorder.output);
+					
+					
+					convertToMP3(wav,function(mp3:ByteArray):void
+					{
+						audio.audio_total_time = vr.totalRecordedTime;
+						uploadFunc(mp3, function(uploadURL:String):void
+						{
+							audio.audio_size = mp3.length;
+							audio.audio_location = uploadURL;
+							audio.audio_isLocal = 1;
+							audio.audio_mime_type = "audio/mpeg";
+								
+							audio.audio_transcript = ta_transcript.text;
+							audio.audio_origin = WordSmartConstants.AUDIO_ORIGIN_USER_RECORDED;
+							audio.audio_orig_url = WordSmartConstants.AUDIO_ORIGIN_USER_RECORDED;
+							registerFunc(audio,function(audioWithID:WSAudio):void
+							{
+								audio.audio_ID = audioWithID.audio_ID;
+								vr.dataUnsaved = false;
+							});
+							
+						})
+						
+					});
+				});
+				
+					
+				
+				
+			}
+			
+			protected function btn_new_clickHandler(event:MouseEvent):void
+			{
+				audio.audio_ID = NaN
+				audio.audio_transcript = "";
+				audio.audio_tags = "";
+				vr.reset();
+				
+			}
+			
+			protected function langChanger_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_language = langChanger.getSelectedLangCode();
+				setUserDialect(audio.audio_language)
+			}
+			
+			
+			protected function dd_audio_type_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_type = dd_audio_type.getAudioType();
+			}
+			
+			
+			protected function dd_audio_mood_changeHandler(event:IndexChangeEvent):void
+			{
+				audio.audio_mood = dd_audio_mood.getMood();
+			}
+			
+			private function setUserDialect(audio_language:String):void
+			{
+				var userDialect:Dialect = getContributerDialectForLanguage(audio_language);
+				audio.audio_rec_dia = userDialect.dialect_code;
+				lb_dialect.text =  userDialect.dialect_label;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" id="container">
+		
+		
+		<s:VGroup width="100%" height="100%">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:HGroup height="22" width="100%" paddingRight="2" horizontalAlign="left" verticalAlign="middle">
+					<language:LanguageFlag toolTip="{langChanger.visible?'Hide Languages':'Show Languages'}" languageCode="{audio.audio_language}" buttonMode="true" useHandCursor="true" id="langFlag" click="{langChanger.includeInLayout = !langChanger.includeInLayout; langChanger.visible = !langChanger.visible}"/>
+					<language:LanguageDropDown toolTip="Transcript Language" includeInLayout="false" visible="false" id="langChanger" language="{audio.audio_language}" change="langChanger_changeHandler(event)"/>
+					<s:Label toolTip="Your Dialect" height="100%" verticalAlign="middle" id="lb_dialect" buttonMode="true" fontWeight="bold" click="{langChanger.includeInLayout = !langChanger.includeInLayout; langChanger.visible = !langChanger.visible}"/>	
+				</s:HGroup>
+				<s:VGroup width="100%">
+				<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle">
+					<audio:AudioMoodDropDown  mood="{audio.audio_mood}" id="dd_audio_mood" change="dd_audio_mood_changeHandler(event)"/>
+					<audio:AudioTypeDropDown id="dd_audio_type"   audioType="{audio.audio_type}" change="dd_audio_type_changeHandler(event)"/>
+					<buttons:WSIconButton width="80" id="btn_audio_tags" toolTip="Open Tag Editor" icon="{IconLib.TAG_16}" label="Tags" click="btn_audio_tags_clickHandler(event)"/>
+				</s:HGroup>
+					<s:Label text="{audio.audio_tags}" width="100%" textAlign="right" paddingRight="3"/>
+				</s:VGroup>
+			</s:HGroup>
+			<s:TextArea id="ta_transcript" width="100%" height="100%" text="{audio.audio_transcript}"></s:TextArea>
+		</s:VGroup>
+		<!--VOICE RECORDER-->
+		<audio:VoiceRecorder id="vr" width="100%" height="40">
+			
+		</audio:VoiceRecorder>
+		
+		<s:BorderContainer  width="100%" height="36" bottom="0">
+			<s:layout>
+				<s:HorizontalLayout  verticalAlign="middle"/>
+			</s:layout>	
+			<s:HGroup width="100%" horizontalAlign="left">
+				<buttons:NewButton label="New Recording" toolTip="Create New Recording"  id="btn_new"  click="btn_new_clickHandler(event)" visible="{vr.hasData}"/>
+			</s:HGroup>
+			<s:HGroup width="100%" horizontalAlign="center">
+					
+			</s:HGroup>
+			
+			<s:HGroup width="100%" horizontalAlign="right" >
+				<buttons:SaveButton label="Add to WordSmart" toolTip="Add Recorded Audio" width="150" click="addAudioToRemote()" visible="{vr.dataUnsaved}" />
+			</s:HGroup>
+		</s:BorderContainer>
+		
+		
+		
+		
+	</s:VGroup>
+</s:Group>

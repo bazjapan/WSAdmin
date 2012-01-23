@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" useHandCursor="true" creationComplete="itemrenderer1_creationCompleteHandler(event)" doubleClickEnabled="true" doubleClick="itemrenderer1_doubleClickHandler(event)" mouseOver="itemrenderer1_mouseOverHandler(event)" click="itemrenderer1_clickHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSImage;
+			
+			import mx.controls.CheckBox;
+			import mx.events.FlexEvent;
+			
+			[Bindable]
+			public var image:jp.wordsmart.dto.WSImage;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				image = value as jp.wordsmart.dto.WSImage;
+			}
+			
+
+			
+
+
+			protected function itemrenderer1_mouseOverHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("IMAGE_HOVER_EVENT", true));
+			}
+
+
+			protected function itemrenderer1_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("IMAGE_CLICK_EVENT", true));
+			}
+
+
+			protected function itemrenderer1_doubleClickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("IMAGE_DOUBLE_CLICK_EVENT", true));
+			}
+
+
+			protected function itemrenderer1_creationCompleteHandler(event:FlexEvent):void
+			{
+			thumb.addEventListener(Event.COMPLETE,onComplete);
+			}
+
+			private var cb:CheckBox = new CheckBox();
+			private var added:Boolean
+			private function onComplete(event:Event):void
+			{
+				if(added)return;
+				
+				main.addElement(cb);
+				cb.x = 2;
+				cb.y = 2;
+				added = true;
+				cb.addEventListener(MouseEvent.CLICK,onCheckBoxClick);
+			}
+			
+			private function onCheckBoxClick(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+			}
+			
+			public function setSelected(boo:Boolean):void
+			{
+			cb.selected = boo;
+			}
+			public function getSelected():Boolean
+			{
+				trace("cb.selected "+cb.selected)
+				return cb.selected;
+			}
+			
+
+		]]>
+	</fx:Script>
+	
+	<s:Group id="main" width="100%" height="100%">
+		
+		<mx:Image width="100%" height="100%" id="thumb" horizontalAlign="center" verticalAlign="middle" source="{image.image_url}" maxHeight="150" maxWidth="150"/>
+	</s:Group>
+	
+	
+</s:ItemRenderer>

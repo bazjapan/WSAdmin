@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="400" minHeight="350" width="100%" height="100%" xmlns:language="views.language.*" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center"/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.dto.TranslationRequest;
+			import jp.wordsmart.dto.WSKeyword;
+			import jp.wordsmart.factory.TranslationRequestFactory;
+			import jp.wordsmart.json.controllers.TranslationRequestController;
+			import jp.wordsmart.model.AppModel;
+			import jp.wordsmart.utils.language.languageCodeToText;
+			
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			
+			[Bindable]
+			public var translation_request:TranslationRequest;
+			[Bindable]
+			public var source_text:String;
+			
+			
+			private var controller:TranslationRequestController = new TranslationRequestController(DomainSettings.API_URL);
+			
+			
+			
+			protected function btn_makeRequest_clickHandler(event:MouseEvent):void
+			{
+				translation_request.request_notes = ta_note.text;
+				translation_request.request_type = togg_tp.selectedType["value"];
+				if(isNaN(translation_request.request_ID))
+				{
+				translation_request = new TranslationRequestFactory().getInstance(
+					translation_request.keyword_ID,
+					translation_request.source_language,
+					translation_request.target_language,
+					translation_request.request_notes,translation_request.request_type);
+				
+				controller.add_translation_request(translation_request,function(evt:ResultEvent):void
+				{
+					
+					if(Number(evt.result) == 0)
+					{
+					Alert.show("Unable to add request please try again");
+					}
+					else
+					{
+					translation_request.request_ID = Number(evt.result);
+					lb_status.text = "Request added.";
+					closeMe();
+					}
+					
+				})}
+				else
+				{
+					controller.update_translation_request(translation_request,function(evt:ResultEvent):void
+					{
+						lb_status.text = "Request updated.";
+						
+					})	
+				}
+			}
+
+
+			protected function btn_remove_clickHandler(event:MouseEvent):void
+			{
+				controller.remove_request_by_id(translation_request.request_ID,function(evt:ResultEvent):void
+				{
+					//lb_status.text = "Request removed.";
+					//form.enabled = false;
+					closeMe();
+				});
+			}
+
+	
+			private function closeMe():void
+			{
+				dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+			}
+	
+		
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	
+	
+	<mx:Form width="100%" height="100%" id="form">
+		<mx:FormItem label="Source Language">
+			<s:Label text="{languageCodeToText(translation_request.source_language)}"/>
+		</mx:FormItem>
+		
+		<mx:FormItem label="Target Language">
+			<s:Label text="{languageCodeToText(translation_request.target_language)}"/>	
+		</mx:FormItem>
+		<mx:FormItem label="Type">
+			<language:TranslateProofIconToggle canToggle="true" id="togg_tp" type="{translation_request.request_type}"/>	
+		</mx:FormItem>
+		<mx:FormItem label="Text" height="100%" width="100%">
+			<mx:Text text="{source_text}" height="100%" width="100%"/>
+		</mx:FormItem>
+		<mx:FormItem label="Note" width="100%">
+			<mx:TextArea id="ta_note" text="{translation_request.request_notes}" height="60" width="100%"/>
+		</mx:FormItem>
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle" paddingRight="5">
+			<mx:Image buttonMode="true" source="{IconLib.DELETE_16}" width="16" height="16" toolTip="Delete Request"  enabled="{translation_request != null}" id="btn_remove" click="btn_remove_clickHandler(event)"/>
+			<s:Label id="lb_status" width="100%" textAlign="center"/>
+			<buttons:WSIconButton icon="{isNaN(translation_request.request_ID)?IconLib.WAND_16:IconLib.SAVE_16}" width="140" label="{isNaN(translation_request.request_ID)?'Make Request':'Update Request'}" id="btn_makeRequest" click="btn_makeRequest_clickHandler(event)"/>
+			</s:HGroup>
+	</mx:Form>
+	
+</s:Group>

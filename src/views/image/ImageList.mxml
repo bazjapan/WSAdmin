@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:List xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="cc()" width="100%" height="100%"  useVirtualLayout="false" itemRenderer="views.image.ImageSearchRenderer">
+	
+	<s:layout>
+		<s:TileLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.dto.WSImage;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			
+			import spark.components.DataGroup;
+			
+			[Bindable]
+			public var selectedImage:WSImage;
+			
+			public var imageDoubleClickFunc:Function;
+			
+			
+			
+			
+			private function cc():void
+			{
+			this.addEventListener("IMAGE_CLICK_EVENT",onIMAGE_CLICK_EVENT);
+			this.doubleClickEnabled = true;
+			this.addEventListener("IMAGE_DOUBLE_CLICK_EVENT",onIMAGE_DOUBLE_CLICK_EVENT);
+			}
+
+			
+			private function onIMAGE_DOUBLE_CLICK_EVENT(event:Event):void
+			{
+				if(selectedImage == null){return};
+				if(imageDoubleClickFunc != null)
+				{
+					imageDoubleClickFunc(selectedImage);
+				}
+			}
+
+			private function onIMAGE_CLICK_EVENT(event:Event):void
+			{
+				selectedImage = ImageSearchRenderer(event.target).image;
+			}
+			
+			public function get images():ArrayCollection
+			{
+				return _images;
+			}
+
+			public function set images(value:ArrayCollection):void
+			{
+				_images = value;
+				this.dataProvider = _images;
+			}
+
+			private var _images:ArrayCollection
+			
+			
+			public function getSelectedImages():Array
+			{
+				var dataGroup:DataGroup = this.dataGroup;
+				var n:int = dataGroup.numElements;
+				var selectedRenderers:Array = [];
+				for (var i:int = 0; i < n; i++)
+				{
+					var renderer:ImageSearchRenderer = dataGroup.getElementAt(i) as ImageSearchRenderer;
+					if(renderer.getSelected())
+					{
+						selectedRenderers.push(renderer["data"]);
+					}
+				}
+				return selectedRenderers;
+				
+			}
+			
+			public function toggleSelect(selected:Boolean):void
+			{
+				var dataGroup:DataGroup = this.dataGroup;
+					var n:int = dataGroup.numElements;
+					for (var i:int = 0; i < n; i++)
+					{
+						var renderer:ImageSearchRenderer = dataGroup.getElementAt(i) as ImageSearchRenderer;
+						renderer.setSelected(selected);
+					}
+				
+			}
+			
+			
+		]]>
+	</fx:Script>
+</s:List>

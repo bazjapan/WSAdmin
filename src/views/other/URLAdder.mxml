@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="28" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center">
+			
+		</s:VerticalLayout>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			
+			import spark.events.TextOperationEvent;
+			
+			import utils.validation.isURL;
+			
+			[Bindable]
+			private var startText:String = "Please type URL here.";
+			[Bindable]private var urlOK:Boolean;
+			
+			public var loadFunction:Function;
+			
+			protected function ti_url_changeHandler(event:TextOperationEvent):void
+			{
+				urlOK = isURL(ti_url.text);//if url is good allow to queue;
+			}	
+
+			protected function btn_load_clickHandler(event:MouseEvent):void
+			{
+				loadFunction(ti_url.text);
+			}
+			protected function ti_url_clickHandler(event:MouseEvent):void
+			{
+				if(ti_url.text == startText)
+				{
+					ti_url.text = "";
+				}
+			}
+
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%" paddingLeft="3" paddingRight="3">
+		<s:TextInput toolTip="Type URL of MP3 File to Add" width="100%" id="ti_url" click="ti_url_clickHandler(event)" change="ti_url_changeHandler(event)" text="{startText}" />
+		<buttons:WSIconButton width="100" visible="{urlOK}" label="Load URL" icon="{IconLib.TARGET_16}" id="btn_load" click="btn_load_clickHandler(event)" toolTip="Load from URL"/>
+	</s:HGroup>
+</s:Group>

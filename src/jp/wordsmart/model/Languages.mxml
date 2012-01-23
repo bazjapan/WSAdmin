@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300" xmlns:language="jp.wordsmart.utils.language.*">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.FlagLib16;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<fx:Array id="languages">
+			<language:Language   value="en" label="English" selected="false" icon="{FlagLib16.en}"/>
+			<language:Language  value="ja" label="Japanese" selected="false" icon="{FlagLib16.ja}"/>
+			<language:Language  value="zh-CN" label="Chinese(Simplified)"  selected="false"  icon="{FlagLib16.zh_cn}"/>
+			<language:Language  value="zh-TW" label="Chinese(Traditional)"  selected="false"  icon="{FlagLib16.zh_tw}"/>
+			<language:Language  value="ko" label="Korean" selected="false" icon="{FlagLib16.ko}"/>
+			<language:Language  value="fr" label="French" selected="false"  icon="{FlagLib16.fr}"/>
+			<language:Language  value="es" label="Spanish" selected="false" icon="{FlagLib16.es}"/>
+			<language:Language  value="pt" label="Portuguese" selected="false" icon="{FlagLib16.pt}"/>
+			<language:Language  value="de" label="German" selected="false"  icon="{FlagLib16.de}"/>
+			<language:Language  value="it" label="Italian" selected="false" icon="{FlagLib16.it}"/>
+			<language:Language  value="ru" label="Russian" selected="false" icon="{FlagLib16.ru}"/>
+			<language:Language  value="ar" label="Arabic" selected="false"  icon="{FlagLib16.sa}"/>
+			<language:Language  value="bg" label="Bulgarian"  selected="false"  icon="{FlagLib16.bg}"/>
+			<language:Language  value="hr" label="Croatian" selected="false"  icon="{FlagLib16.hr}"/>
+			<language:Language  value="cs" label="Czech" selected="false"  icon="{FlagLib16.cs}"/>
+			<language:Language  value="da" label="Danish" selected="false"  icon="{FlagLib16.da}"/>
+			<language:Language  value="nl" label="Dutch" selected="false"  icon="{FlagLib16.nl}"/>
+			<language:Language  value="fi" label="Finnish" selected="false"  icon="{FlagLib16.fi}"/>
+			<language:Language  value="el" label="Greek" selected="false"  icon="{FlagLib16.el}"/>
+			<language:Language  value="hi" label="Hindi" selected="false" icon="{FlagLib16.india}"/>
+			<language:Language  value="no" label="Norwegian" selected="false" icon="{FlagLib16.no}"/>
+			<language:Language  value="pl" label="Polish" selected="false" icon="{FlagLib16.pl}"/>
+			<language:Language  value="sv" label="Swedish" selected="false" icon="{FlagLib16.sv}"/>
+		</fx:Array>
+	</fx:Declarations>
+</s:Group>

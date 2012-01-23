@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  creationComplete="cc()" width="400" height="266" xmlns:user="views.user.*" xmlns:controls="com.adobe.flex.extras.controls.*">
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+
+			private var passwordGood:Boolean;
+			protected function ti_user_pass_changeHandler(event:TextOperationEvent):void
+			{
+				lb_password_warning.text= "";
+				lb_email_warning.setStyle("color", "black");	
+				if(ti_user_pass.text.length<7){
+					
+					lb_password_warning.text= "too short"
+					lb_email_warning.setStyle("color", "red");
+				}
+				if(ti_user_pass.text.length>6)
+				{
+					if(ti_user_pass.text == ti_user_pass2.text)
+					{
+						lb_password_warning.text= "OK";
+						lb_email_warning.setStyle("color", "black");
+						passwordGood = true;
+					}
+				}
+				isValid = checkIsValid();
+			}
+
+
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.DomainSettings;
+			import jp.wordsmart.WordSmartConstants;
+			import utils.number.addLeadingZero;
+			import jp.wordsmart.dto.Contributer;
+			import jp.wordsmart.json.controllers.UserController;
+			import jp.wordsmart.model.AppModel;
+			
+			import mx.events.FlexEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.events.TextOperationEvent;
+			
+			import utils.date.now;
+			import utils.timestamp.timestampToDate;
+			import utils.validation.isDate;
+			import utils.validation.isEmail;
+			
+			protected function cc():void
+			{
+				
+			}
+			
+			public function setContributer(cont:Contributer):void
+			{
+				contributor = cont;
+				if(contributor.user_gender == "F")
+				{
+					togg_gender.selectedIndex = 1;
+				}
+				else
+				{
+					togg_gender.selectedIndex = 0;	
+				}
+				
+				
+				//user already regged;
+				if(!isNaN(contributor.ID))
+				{
+					ti_birthday.text = contributor.user_dob;
+					birthDateGood = true;
+					emailGood = true;
+					userNameGood = true;
+					passwordGood = true;
+					isValid = checkIsValid();
+				}
+				
+			}
+
+			[Bindable]
+			public var contributor:Contributer;
+			
+			private var userController:UserController = new UserController(DomainSettings.API_URL);
+			[Bindable]
+			public var isValid:Boolean;
+			
+			private function checkIsValid():Boolean
+			{
+				if(!isNaN(contributor.ID))
+				{
+				return birthDateGood && emailGood && userNameGood;
+				}
+				else
+				{
+				return birthDateGood && emailGood && userNameGood && passwordGood;
+				}
+			}
+			
+			[Bindable]
+			private var birthDateGood:Boolean;
+			private function validateBirthDate():void
+			{
+				var value:String = ti_birthday.text;
+				
+				var yearString:String = value.substr(0,4);
+				if(yearString.length<4){birthDateGood = false; isValid = checkIsValid(); return;}
+				var monthString:String = value.substr(4,2);
+				if(monthString.length<2){birthDateGood = false; isValid = checkIsValid(); return;}
+				var dayString:String = value.substr(6,2);
+				if(dayString.length<2){birthDateGood = false; isValid = checkIsValid(); return;}
+				
+				var day:Number = Number(dayString);
+				var month:Number = Number(monthString);
+				var year:Number	= Number(yearString);
+				
+				var now:Date = new Date();
+				birthDateGood = day<32 && day>0 && month > 0 && month < 13 && year > 1930 && year <  now.getFullYear();
+				isValid = checkIsValid();
+				
+			}
+			
+			protected function ti_birthday_inputMaskEndHandler(event:Event):void
+			{
+				validateBirthDate()
+			}
+			protected function ti_birthday_changeHandler(event:Event):void
+			{
+				validateBirthDate();
+			}
+			protected function ti_birthday_enterHandler(event:FlexEvent):void
+			{
+				validateBirthDate();
+			}
+			protected function ti_birthday_focusOutHandler(event:FocusEvent):void
+			{
+				validateBirthDate();
+			}
+			
+			[Bindable]
+			private var emailGood:Boolean;
+			protected function ti_user_email_changeHandler(event:TextOperationEvent):void
+			{
+				if(isEmail(ti_user_email.text))
+				{
+					userController.check_email_exists(ti_user_email.text, function(evt:ResultEvent):void
+					{
+						var result:Object = evt.result;
+						if(result == "false")
+						{
+							lb_email_warning.text = "OK";
+							lb_email_warning.setStyle("color", "black");
+							emailGood = true;
+							
+						}
+						else
+						{
+							lb_email_warning.text = "Email Exists";
+							lb_email_warning.setStyle("color", "red");
+							
+						}
+						
+						
+						
+					});
+				}
+				else
+				{
+					lb_email_warning.text = "";
+					emailGood = false;
+				}
+				
+				isValid = checkIsValid();
+			}
+			
+
+			
+
+			[Bindable]
+			private var userNameGood:Boolean;
+			protected function ti_user_name_changeHandler(event:TextOperationEvent):void
+			{
+				if(ti_user_name.text.length>4)
+				{
+					userController.check_user_login_exists(ti_user_name.text, function(evt:ResultEvent):void
+					{
+						trace(evt.result)
+						var result:Object = evt.result;
+						
+						if(result == "null")
+						{
+							lb_user_name_warning.text = "OK";
+							lb_user_name_warning.setStyle("color", "black");
+							userNameGood = true;
+							
+						}
+						else
+						{
+							lb_user_name_warning.text = "User Exists";
+							lb_user_name_warning.setStyle("color", "red");
+							userNameGood = false;
+						}
+						
+						
+						isValid = checkIsValid();
+					});
+				}
+				else
+				{
+					lb_user_name_warning.text = "";
+					userNameGood = false;
+				}
+				
+			}
+			
+			public function saveContributer():void
+			{
+				if(!isValid)return;
+				contributor.user_login = ti_user_name.text;
+				contributor.user_email = ti_user_email.text;
+				contributor.user_dob = ti_birthday.text;
+				contributor.user_gender = togg_gender.dataProvider[togg_gender.selectedIndex];
+				
+				//this sould mean user has changed pw
+				if(lb_password_warning.text == "OK")
+				{
+					contributor.user_pass = ti_user_pass.text;
+				}
+				
+				
+			}
+
+		]]>
+	</fx:Script>
+	
+	
+	
+	<mx:Form width="100%">
+		<s:HGroup verticalAlign="middle" width="100%" paddingBottom="10">
+				<s:Label text="Personal Details" fontWeight="bold" width="100%"/>
+				<s:HGroup width="100%" horizontalAlign="right">
+					<mx:Image source="{IconLib.MARK_AS_DONE_16}" width="16" height="16" visible="{isValid}"/>
+				</s:HGroup>
+			</s:HGroup>
+		
+		<mx:FormItem label="User Name" >
+			<s:HGroup verticalAlign="middle" width="100%">
+				<s:TextInput width="120" id="ti_user_name" text="{contributor.user_login}" enabled="{isNaN(contributor.ID)}" change="ti_user_name_changeHandler(event)"/>
+				<s:Label id="lb_user_name_warning" paddingRight="2" fontWeight="bold"/>
+			</s:HGroup>
+		</mx:FormItem>
+		<mx:FormItem label="Password (twice)">
+			<s:HGroup width="100%">
+				<s:VGroup width="100%">
+					<s:TextInput  width="165" id="ti_user_pass" displayAsPassword="true" change="ti_user_pass_changeHandler(event)"/>
+					<s:TextInput width="165" id="ti_user_pass2" displayAsPassword="true" change="ti_user_pass_changeHandler(event)"/>
+					<user:PasswordMeter  width="100%" target="{ti_user_pass}" trackHeight="20"/>
+				</s:VGroup>
+				<s:VGroup width="100%" height="100%" horizontalAlign="left" verticalAlign="middle">
+					<s:Label id="lb_password_warning" paddingLeft="2" fontWeight="bold" />
+				</s:VGroup>
+			</s:HGroup>
+		</mx:FormItem>
+		<mx:FormItem label="Email" width="100%">
+			<s:HGroup verticalAlign="middle">
+				<s:TextInput change="ti_user_email_changeHandler(event)" width="165" id="ti_user_email" text="{contributor.user_email}"/>
+				<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label id="lb_email_warning" paddingLeft="2" fontWeight="bold"/>
+				</s:HGroup>
+			</s:HGroup>
+		</mx:FormItem>
+		<mx:FormItem label="DOB">
+			<s:HGroup verticalAlign="middle">
+				<controls:MaskedTextInput focusOut="ti_birthday_focusOutHandler(event)" maskVisible="{!birthDateGood}" enter="ti_birthday_enterHandler(event)" change="ti_birthday_changeHandler(event)" inputMaskEnd="ti_birthday_inputMaskEndHandler(event)" autoAdvance="true" inputMask="YYYY/MM/DD" required="true" cellColor="#000066" id="ti_birthday"/>
+				<s:Label paddingLeft="10" fontWeight="bold" text="OK" visible="{birthDateGood}"/>
+			</s:HGroup>
+		</mx:FormItem>
+		
+		<mx:FormItem label="Gender">
+			<mx:ToggleButtonBar id="togg_gender" dataProvider="{['M','F']}">
+			</mx:ToggleButtonBar>
+		</mx:FormItem>
+		
+	</mx:Form>
+	
+	
+</s:Group>

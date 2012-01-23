@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:image="views.image.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+<s:layout>
+	<s:VerticalLayout paddingLeft="3" paddingRight="3">
+		
+	</s:VerticalLayout>	
+</s:layout>
+
+
+
+	
+	
+<image:ImageDetailsSetter width="100%" height="100%">
+	
+</image:ImageDetailsSetter>	
+</s:Group>

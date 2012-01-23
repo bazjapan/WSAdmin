@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" mouseDown="doDrag(event)" creationComplete="cc()" width="100%" height="100%" backgroundAlpha="0.2" backgroundColor="0x000000" xmlns:buttons="views.buttons.*" height.background="36" width.background="260" height.image="140" width.image="260" height.text="140" width.text="260">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center"/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import flash.text.engine.FontPosture;
+			import flash.text.engine.FontWeight;
+			
+			import image.BlendModes;
+			import image.FontWeights;
+			
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.components.dynoSlide.DynoText;
+			import jp.wordsmart.components.dynoSlide.models.DynoBitMapModel;
+			import jp.wordsmart.components.dynoSlide.models.DynoSlideBackgroundModel;
+			import jp.wordsmart.components.dynoSlide.models.DynoTextModel;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.DragEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.DragManager;
+			
+			import spark.components.ButtonBar;
+			
+			import views.other.CustomIconButtonSkin;
+
+			public var bringToFront:Function
+			public var sendToBack:Function
+			public var bringForward:Function
+			public var sendBackward:Function
+			public var copy:Function
+			public var remove:Function
+			public var maximize:Function;
+			public var toggleLayer:Function;
+			public var changeImage:Function;
+			public var cropImage:Function;
+			public var reloadImage:Function;
+			public var maintainAspectRatio:Function;
+			
+			[Bindable]
+			public function get model():DynoSlideBackgroundModel
+			{
+				return _model;
+			}
+			
+
+			public function set model(value:DynoSlideBackgroundModel):void
+			{
+				_model = value;
+				if(value is DynoBitMapModel)
+				{
+					currentState = "image";
+				}
+				else if(value is DynoTextModel)
+				{
+					currentState = "text";
+				}
+				else
+				{
+					currentState = "background";
+				}
+			}
+
+			private var _model:DynoSlideBackgroundModel;
+			
+			private function cc():void
+			{
+				this.addEventListener(MouseEvent.ROLL_OVER, function(evt:Event):void
+				{
+					trace("mover")
+					alpha = 1;
+				})
+				this.addEventListener(MouseEvent.ROLL_OUT, function(evt:Event):void
+				{
+					trace("mout")
+					alpha = 0.2;
+				})
+				
+			}
+			
+			private var offsetX:int
+			private var offsetY:int
+			protected function doDrag(event:MouseEvent):void
+			{
+				offsetX =(event.stageX)-(this.x);
+				offsetY = (event.stageY)-(this.y);
+				
+				stage.addEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
+				stage.addEventListener(MouseEvent.MOUSE_UP, stopTheDrag);
+			}
+			private function onMouseMove(event:MouseEvent):void
+			{
+				this.x = event.stageX-offsetX;
+				this.y = event.stageY-offsetY;
+			}
+			
+			private function stopTheDrag(evt:MouseEvent =null):void
+			{
+				if(stage != null)
+				{
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
+				stage.removeEventListener(MouseEvent.MOUSE_UP, stopTheDrag);
+				}
+			}
+
+			
+
+			
+			
+
+
+		
+
+
+			
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	
+	<s:states>
+		<s:State name="background"/>
+		<s:State name="image"/>
+		<s:State name="text"/>
+	</s:states>
+	<s:HGroup includeIn="background, image, text">
+		<mx:ColorPicker  selectedColor="{model.bgc}" change="{model.bgc = event.color}" toolTip="Background Color"/>
+		<s:Spinner maximum="10" minimum="0" toolTip="{'Background Alpha -'+model.bga*10}" value="{model.bga*10}"  change="{model.bga = Spinner(event.currentTarget).value/10}"/>
+		<mx:VRule height="25" />
+		<mx:ColorPicker  selectedColor="{model.bc}" change="{model.bc = event.color}" toolTip="Border Color"/>
+		<s:Spinner maximum="10" minimum="0" toolTip="{'Border Alpha -'+model.ba*10}" value="{model.ba*10}"  change="{model.ba = Spinner(event.currentTarget).value/10}"/>
+		<s:NumericStepper maximum="15" minimum="0" toolTip="Border Weight" value="{model.bw}"  change="{model.bw = NumericStepper(event.currentTarget).value}"/>
+		<s:HGroup width="100%">
+			<!--<s:ButtonBarButton skinClass="views.other.CustomIconButtonSkin" 
+							   data="{{'icon':IconLib.TEXT_16}}" 
+							   selected="{model.useURL}" 
+							   click="{model.useURL=ButtonBarButton(event.currentTarget).selected}" 
+							   toolTip="Show Background Image" 
+							   width="24" height="24"/>-->
+			<s:ButtonBarButton skinClass="views.other.CustomIconButtonSkin" 
+							   data="{{'icon':IconLib.TEXT_16}}" 
+							   selected="true" 
+							   click="toggleLayer('text',ButtonBarButton(event.currentTarget).selected)" 
+							   toolTip="Hide Text Layer" 
+							   width="24" height="24"/>
+			
+			<s:ButtonBarButton skinClass="views.other.CustomIconButtonSkin" 
+							   data="{{'icon':IconLib.PICTURE_16}}" 
+							   selected="true" 
+							   click="toggleLayer('bitmaps',ButtonBarButton(event.currentTarget).selected)" 
+							   toolTip="Hide Image Layer" width="24" height="24"/>
+			
+			
+			
+		</s:HGroup>
+	</s:HGroup>
+	
+	<s:HGroup verticalAlign="middle" horizontalAlign="center" includeIn="image,text" width="100%" paddingRight="3" paddingLeft="3">
+		<buttons:WSIconButton click="bringToFront()" toolTip="Bring to Front" icon="{IconLib.BRING_TO_FRONT_18}" width="24" height="24"/>
+		<buttons:WSIconButton click="sendToBack()" toolTip="Send to Back" icon="{IconLib.SEND_TO_BACK_18}" width="24" height="24"/>
+		<buttons:WSIconButton click="bringForward()" toolTip="Bring Forward" icon="{IconLib.BRING_FORWARD_18}" width="24" height="24"/>
+		<buttons:WSIconButton click="sendBackward()" toolTip="Send Backward" icon="{IconLib.SEND_BACKWARD_18}" width="24" height="24"/>
+		<mx:VRule height="25"/>
+		<buttons:WSIconButton click="{model['ha'] = 'left'}" toolTip="Align Left" icon="{IconLib.ALIGN_LEFT_16}" width="24" height="24"/>
+		<buttons:WSIconButton click="{model['ha'] = 'center'}" toolTip="Align Center" icon="{IconLib.ALIGN_CENTER_16}" width="24" height="24"/>
+		<buttons:WSIconButton click="{model['ha'] = 'right'}" toolTip="Align Right" icon="{IconLib.ALIGN_RIGHT_16}" width="24" height="24"/>
+	</s:HGroup>
+	
+	<s:HGroup includeIn="image,text" width="100%" verticalAlign="middle" horizontalAlign="center">
+		<s:ButtonBarButton skinClass="views.other.CustomIconButtonSkin" toolTip="Hide" data="{{'icon':IconLib.EYE_16}}" selected="{model.visible}" click="{model.visible=ButtonBarButton(event.currentTarget).selected}" width="24" height="24"/>
+		<buttons:WSIconButton icon="{IconLib.COPY_16}" toolTip="Copy" click="copy()" width="24" height="24"/>
+		<buttons:WSIconButton icon="{IconLib.DELETE_16}" id="btn_remove" toolTip="Remove" click="remove()" width="24" height="24"/>
+		<mx:VRule height="25"/>
+		<s:DropDownList selectedItem="{model['bm']}" dataProvider="{new ArrayCollection(BlendModes.ALL_MODES())}" change="{model['bm'] = BlendModes.ALL_MODES()[DropDownList(event.currentTarget).selectedIndex].toString()}"/>
+</s:HGroup>
+	<s:HGroup includeIn="image">
+		<buttons:WSIconButton icon="{IconLib.MAXIMIZE_16}"  toolTip="Maximize Image" click="maximize()" width="24" height="24"/>
+		<buttons:WSIconButton icon="{IconLib.PENCIL_16}"  toolTip="Change Image" click="changeImage()" width="24" height="24"/>
+		<buttons:WSIconButton icon="{IconLib.CROP_16}"  toolTip="Crop Image" click="cropImage()" width="24" height="24"/>
+		<buttons:WSIconButton icon="{IconLib.RELOAD}"  toolTip="Reload From URL" click="reloadImage()" width="24" height="24"/>
+		<s:Spinner maximum="10" minimum="0" toolTip="{'Image Alpha -'+model['ia']*10}" value="{model['ia']*10}"  change="{model['ia'] = Spinner(event.currentTarget).value/10}"/>	
+	</s:HGroup>
+	<s:HGroup verticalAlign="middle" horizontalAlign="center" width="100%" includeIn="text">
+		<s:NumericStepper minimum="6" maximum="500" value="{model['fs']}" change="{model['fs'] = NumericStepper(event.currentTarget).value}"/>
+		<mx:VRule height="25" />
+		<mx:ColorPicker id="text_colorPicker" change="{model['tc'] = event.color}" selectedColor="{model['tc']}" toolTip="Text Color"/>
+		<s:Spinner maximum="10" minimum="0" toolTip="{'Text Alpha -'+model['textAlpha']*10}" value="{model['ta']*10}"  change="{model['ta'] = Spinner(event.currentTarget).value/10}"/>	
+		<s:ButtonBarButton skinClass="views.other.CustomIconButtonSkin" data="{{'icon':IconLib.BOLD_16}}" click="{ButtonBarButton(event.currentTarget).selected?model['fw']=FontWeight.BOLD:model['fw']=FontWeights.NORMAL}" width="24" height="24"/>
+		<s:ButtonBarButton skinClass="views.other.CustomIconButtonSkin" data="{{'icon':IconLib.ITALIC_16}}" click="{ButtonBarButton(event.currentTarget).selected?model['st']=FontPosture.ITALIC:model['st']=FontPosture.NORMAL}" width="24" height="24"/>
+	</s:HGroup>
+	
+	
+</s:BorderContainer>

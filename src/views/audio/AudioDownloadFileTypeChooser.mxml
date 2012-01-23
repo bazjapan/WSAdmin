@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" height="70" xmlns:buttons="views.buttons.*" width="130">
+	<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center"/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			public var CHOSEN_TYPE:String;
+			
+			public var choiceMade:Function;
+			
+			private function saveAs(type:String):void
+			{
+			CHOSEN_TYPE = type;
+			if(choiceMade)
+			choiceMade(type);
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<buttons:WSIconButton width="100" label="WAV" toolTip="Save As WAV File" icon="{IconLib.SAVE_16}" click="saveAs('WAV')"/>
+	<buttons:WSIconButton width="100" label="MP3" toolTip="Save As MP3 File" icon="{IconLib.SAVE_16}" click="saveAs('MP3')"/>
+</s:Group>

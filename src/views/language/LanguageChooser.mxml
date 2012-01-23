@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"  
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"  creationComplete="languageChooser_creationCompleteHandler(event)" xmlns:buttons="views.buttons.*">
+	<s:layout>
+		<s:VerticalLayout paddingRight="3" paddingBottom="3" paddingLeft="3" paddingTop="3">
+			
+		</s:VerticalLayout>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	
+	<fx:Script>
+		<![CDATA[
+			import jp.wordsmart.assets.IconLib;
+			import jp.wordsmart.model.Languages;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.CheckBox;
+			import mx.events.FlexEvent;
+			
+			import spark.components.DataGroup;
+			import spark.components.ToggleButton;
+			
+			
+			public var selectedLanguages:Array;
+			public var languagesNotToShow:Array = [];
+			public var save:Function;
+			
+			[Bindable]
+			public var allLanguages:ArrayCollection;
+			[Bindable]
+			public var showControls:Boolean = true;
+			
+			protected function languageChooser_creationCompleteHandler(event:FlexEvent):void
+			{
+				allLanguages = new ArrayCollection;
+				allLanguages.source = new Languages().languages;
+				
+				
+				for (var j:int = 0; j < languagesNotToShow.length; j++)
+				{
+					var exclude:String = languagesNotToShow[j] as String;
+					for (var i:int = 0; i < allLanguages.length; i++)
+					{
+						var language:String = allLanguages[i]["value"];
+						if(language == exclude)
+						{
+							allLanguages.removeItemAt(i);
+							break;
+						}
+					}
+					
+				}
+				
+				
+			}
+			public function getSelectedLanguages():Array
+			{
+				var selected:Array = [];
+				for (var i:int = 0; i < allLanguages.length; i++)
+				{
+					if(allLanguages[i]["selected"] == true)
+					{
+						selected.push(allLanguages[i]["value"])
+					}
+				}
+				return selected;
+			}
+			
+			protected function btn_add_clickHandler(event:MouseEvent):void
+			{
+				if(save != null)
+				{
+					save(getSelectedLanguages());
+					resetUI();
+					
+					
+				}
+			}
+			private function resetUI():void
+			{
+				var dataGroup:DataGroup = lt_allLanguages.dataGroup;
+				var n:int = dataGroup.numElements;
+				for (var i:int = 0; i < n; i++)
+				{
+					var renderer:LanguageToggle = dataGroup.getElementAt(i) as LanguageToggle;
+					renderer.reset();
+				}
+				
+				
+			}
+			
+			
+
+		]]>
+	</fx:Script>
+	<s:List id="lt_allLanguages" width="100%" height="100%" dataProvider="{allLanguages}" labelField="label" itemRenderer="views.language.LanguageToggle">
+		<s:layout>
+			<s:TileLayout>
+				
+			</s:TileLayout>
+		</s:layout>
+	</s:List>
+	<s:HGroup paddingRight="3" includeInLayout="{showControls}" visible="{showControls}" id="langButtonContainer" width="100%" horizontalAlign="right">
+		<buttons:WSIconButton icon="{IconLib.ADD_16}" includeInLayout="{showControls}" visible="{showControls}" toolTip="Add language" label="Add language" id="btn_add" click="btn_add_clickHandler(event)"/>
+	</s:HGroup>
+</s:Group>

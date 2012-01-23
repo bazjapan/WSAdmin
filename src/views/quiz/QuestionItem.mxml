@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="960" height="175" xmlns:audio="views.audio.*">
+	<s:layout>
+		<s:VerticalLayout paddingTop="5"/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			[Bindable]public var image_url:String;
+			
+
+			protected function img_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event("EVENT_IMAGE_CLICKED", true));
+			}
+
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:HGroup width="100%" height="100%"  verticalAlign="middle" horizontalAlign="center">
+		<s:VGroup width="160" height="100%">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<mx:HRule width="20"/>
+				<s:Label text="Image"/>
+				<mx:HRule width="100%"/>
+			</s:HGroup>
+			<s:VGroup verticalAlign="middle" width="100%" height="100%">
+			
+			<s:BorderContainer width="160" height="120" click="img_clickHandler(event)">
+				<mx:Image source="{image_url}" id="img" width="100%" height="100%">
+				</mx:Image>
+			</s:BorderContainer>
+				
+			</s:VGroup>
+		</s:VGroup>
+	<s:VGroup width="150" height="100%">
+		<s:HGroup width="100%" verticalAlign="middle">
+			<mx:HRule width="20"/>
+			<s:Label text="Audio"/>
+			<mx:HRule width="100%"/>
+		</s:HGroup>
+		<s:BorderContainer width="150" height="150">
+			
+		</s:BorderContainer>
+	</s:VGroup>
+		<s:VGroup width="100%" height="100%">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<mx:HRule width="20"/>
+				<s:Label text="Text"/>
+				<mx:HRule width="100%"/>
+			</s:HGroup>
+		<s:TextArea width="100%" height="150"/>	
+		</s:VGroup>
+	</s:HGroup>
+	
+	
+	
+</s:Group>
