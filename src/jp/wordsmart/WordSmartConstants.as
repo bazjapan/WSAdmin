@@ -35,8 +35,8 @@ package jp.wordsmart
 			
 			
 			
-			public static const amazon_secret_key:String = "QvL8o3sW2SeIMeGDKV7mKkqW4EWigvUqCadQ0LYq"; // Amazon secret key
-			public static const amazon_access_key:String = "AKIAIWWT5UZASSBE3AYA"; // Amazon access key
+			public static const amazon_secret_key:String = "removed"; // Amazon secret key
+			public static const amazon_access_key:String = "removed"; // Amazon access key
 			
 			
 			public static const audioMoods:Array = ['normal','singing','friendly','cheerful','gloomy','assured ','rejected','ashamed','worried', 'excited', 'nervous' ];
